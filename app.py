@@ -1477,28 +1477,29 @@ if st.session_state["mostrar_sankey"]:
                 values.append(d["valor"])
 
         fig = go.Figure(data=[go.Sankey(
+            # 🎨 AQUÍ VA 'textfont': directamente en go.Sankey (fuera de 'node')
+            textfont=dict(color="black", size=13, family="Arial"),
             node=dict(
                 label=labels,
                 pad=15,
                 thickness=20,
-                line=dict(color="black", width=0.5),
-                textfont=dict(color="black", size=13, family="Arial")
+                line=dict(color="black", width=0.5)
             ),
             link=dict(
                 source=sources,
                 target=targets,
                 value=values,
-                color="rgba(200, 200, 200, 0.55)"  # Gris semitransparente para mejor legibilidad
+                color="rgba(200, 200, 200, 0.45)"  # Gris semitransparente para mejor lectura
             )
         )])
         
         fig.update_layout(
-            title_text="Diagrama Sankey del consumo (kWh/mes)",
-            font=dict(color="black", size=13, family="Arial"),  # 🎨 FUENTE NEGRA, NÍTIDA Y SIN SOMBRAS
+            title_text="🔌 Diagrama Sankey del consumo (kWh/mes)",
+            font=dict(color="black", size=13, family="Arial"),
             height=600
         )
 
-        # 🎨 `theme=None` DESACTIVA EL TEMA FORZADO DE STREAMLIT PARA QUITAR LAS SOMBRAS
+        # 🎨 `theme=None` remueve la sombra borrosa inyectada por Streamlit
         st.plotly_chart(fig, use_container_width=True, theme=None)
         
 # Mostrar gráfico de Pareto
