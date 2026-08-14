@@ -1481,13 +1481,13 @@ if st.session_state["mostrar_sankey"]:
                 label=labels,
                 pad=15,
                 thickness=20,
-                line=dict(color="blue", width=1)
+                line=dict(color="black", width=0.5)
             ),
             link=dict(
                 source=sources,
                 target=targets,
                 value=values,
-                color="rgba(200, 200, 200, 0.45)"  # Gris semitransparente para mejor legibilidad
+                color="rgba(500, 200, 200, 1)"  # Gris semitransparente para mejor legibilidad
             )
         )])
         
