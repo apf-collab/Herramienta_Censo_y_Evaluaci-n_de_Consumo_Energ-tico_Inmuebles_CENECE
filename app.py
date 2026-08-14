@@ -1482,6 +1482,7 @@ if st.session_state["mostrar_sankey"]:
                 pad=15,
                 thickness=20,
                 line=dict(color="black", width=0.5)
+                textfont=dict(color="black", size=13, family="Arial")
             ),
             link=dict(
                 source=sources,
