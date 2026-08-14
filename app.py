@@ -1487,7 +1487,7 @@ if st.session_state["mostrar_sankey"]:
                 source=sources,
                 target=targets,
                 value=values,
-                color="rgba(500, 200, 200, 1)"  # Gris semitransparente para mejor legibilidad
+                color="rgba(200, 200, 200, 0.25)"  # Gris semitransparente para mejor legibilidad
             )
         )])
         
