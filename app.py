@@ -1481,7 +1481,7 @@ if st.session_state["mostrar_sankey"]:
                 label=labels,
                 pad=15,
                 thickness=20,
-                line=dict(color="black", width=0.5)
+                line=dict(color="blue", width=1)
             ),
             link=dict(
                 source=sources,
@@ -1492,8 +1492,8 @@ if st.session_state["mostrar_sankey"]:
         )])
         
         fig.update_layout(
-            title_text="🔌 Diagrama Sankey del consumo (kWh/mes)",
-            font=dict(color="blue", size=13, family="Arial"),  # 🎨 FUENTE NEGRA, NÍTIDA Y SIN SOMBRAS
+            title_text="Diagrama Sankey del consumo (kWh/mes)",
+            font=dict(color="black", size=13, family="Arial"),  # 🎨 FUENTE NEGRA, NÍTIDA Y SIN SOMBRAS
             height=600
         )
 
