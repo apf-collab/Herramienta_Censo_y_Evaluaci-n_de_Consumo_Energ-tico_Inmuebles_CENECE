@@ -702,7 +702,7 @@ with tab_oficina:
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
+        #st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
 # ------------------------
 # Pestaña Salud
@@ -850,7 +850,7 @@ with tab_salud:
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
+        #st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
 # ------------------------
 # Pestaña Otros usos
@@ -999,7 +999,7 @@ with tab_otros:
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
+        #st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
 # ------------------------
 # Pestaña Residencial
@@ -1194,7 +1194,7 @@ with tab_residencial:
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
+        #st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
     # ------------------------
     # EVALUACIÓN DE TARIFA (AHORA DENTRO DE LA PESTAÑA RESIDENCIAL)
