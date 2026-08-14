@@ -1427,6 +1427,9 @@ if st.session_state["mostrar_tabla"]:
         )
 
 # Mostrar Sankey
+# ------------------------
+# Mostrar Sankey (compatible con Global y Por piso)
+# ------------------------
 if st.session_state["mostrar_sankey"]:
     sankey_data = st.session_state.get("sankey_data", [])
     if not sankey_data:
@@ -1472,25 +1475,30 @@ if st.session_state["mostrar_sankey"]:
                 sources.append(label_index[d["uso"]])
                 targets.append(label_index[d["subuso"]])
                 values.append(d["valor"])
-                
+
         fig = go.Figure(data=[go.Sankey(
             node=dict(
                 label=labels,
                 pad=15,
                 thickness=20,
-                # 🎨 FUENTE NEGRA Y DEFINIDA
-                font=dict(color="black", size=13, family="Arial")
+                line=dict(color="black", width=0.5)
             ),
             link=dict(
                 source=sources,
                 target=targets,
                 value=values,
-                # 🎨 FLUJOS TRANS LÚCIDOS (Gris claro semitransparente)
-                color="rgba(210, 210, 210, 0.45)"
+                color="rgba(200, 200, 200, 0.45)"  # Gris semitransparente para mejor legibilidad
             )
         )])
-        fig.update_layout(title_text="🔌 Diagrama Sankey del consumo (kWh/mes)", font_size=12, height=600)
-        st.plotly_chart(fig, use_container_width=True)
+        
+        fig.update_layout(
+            title_text="🔌 Diagrama Sankey del consumo (kWh/mes)",
+            font=dict(color="black", size=13, family="Arial"),  # 🎨 FUENTE NEGRA, NÍTIDA Y SIN SOMBRAS
+            height=600
+        )
+
+        # 🎨 `theme=None` DESACTIVA EL TEMA FORZADO DE STREAMLIT PARA QUITAR LAS SOMBRAS
+        st.plotly_chart(fig, use_container_width=True, theme=None)
         
 # Mostrar gráfico de Pareto
 if st.session_state["mostrar_pareto"]:
