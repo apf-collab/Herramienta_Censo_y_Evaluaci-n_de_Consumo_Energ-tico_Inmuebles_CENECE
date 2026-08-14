@@ -49,9 +49,9 @@ equipos_continuos = [
 
 # Potencias nominales por subuso (W)
 potencias_nominales = {
-    "Tubo LED T8": 18, "Tubo LED T5": 16, "Foco LED": 10, "Panel LED": 25,
-    "Tubo fluorescente T8": 36, "Tubo fluorescente T5": 28, "Fluorescente compacto": 20,
-    "Incandescente": 60, "Halógena": 50, "Computadora de escritorio": 250, "Laptop": 5.2,
+    "Tubo LED T8": 18, "Tubo LED T5": 16, "Foco LED": 10, "Panel LED 30x30": 18, "Panel LED 60x60": 48, "Panel LED 30x120": 50,
+    "Tira LED (por metro lineal)": 10, "Tubo fluorescente T8": 36, "Tubo fluorescente T5": 28, "Fluorescente compacto": 20,
+    "Incandescente": 60, "Halógena": 50, "Computadora de escritorio": 250, "Laptop": 5.2, "Enfriador/calentador de agua": 600,
     "Refrigerador": 47, "Cafetera": 1000, "Microondas": 1000, "Parrilla o estufa eléctrica": 1500,
     "Horno eléctrico": 1200, "Purificador de aire": 150, "Bomba de agua": 1800,
     "Elevador": 12000, "Escaleras eléctricas": 15000, "Compresor": 4000,
@@ -105,8 +105,8 @@ usos_por_inmueble = {
 
 # Sub-usos
 subusos = {
-    "Iluminación": ["Tubo LED T8", "Tubo LED T5", "Foco LED", "Panel LED", "Tubo fluorescente T8",
-                    "Tubo fluorescente T5", "Fluorescente compacto", "Incandescente", "Halógena", "Otro"],
+    "Iluminación": ["Tubo LED T8", "Tubo LED T5", "Foco LED", "Panel LED 30x30", "Panel LED 60x60", "Panel LED 30x120", "Tira LED (por metro lineal)",
+                    "Tubo fluorescente T8", "Tubo fluorescente T5", "Fluorescente compacto", "Incandescente", "Halógena", "Otro"],
     "Acondicionamiento de aire": list(cop_data.keys()) + ["Otro"],
     "Acondicionamiento de aire residencial": list(cop__data.keys()) + ["Otro"],
     "Electrodomésticos": ["Refrigerador", "Cafetera", "Microondas", "Parrilla o estufa eléctrica",
