@@ -1196,27 +1196,29 @@ with tab_residencial:
 
         st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
-# ------------------------
-# Evaluación de consumo contra la tarifa
-# ------------------------
-sankey_data = st.session_state.get("sankey_data", [])
-total_residencial = sum(item["valor"] for item in sankey_data if item["uso"] in usos_residenciales)
+    # ------------------------
+    # EVALUACIÓN DE TARIFA (AHORA DENTRO DE LA PESTAÑA RESIDENCIAL)
+    # ------------------------
+    st.markdown("---")
+    st.subheader("📊 Evaluación de consumo de la vivienda")
+    sankey_data = st.session_state.get("sankey_data", [])
+    total_residencial = sum(item["valor"] for item in sankey_data if item["uso"] in usos_residenciales)
 
-limite = limites_tarifa[tarifa_sel]
-porcentaje_res = (total_residencial / limite * 100) if limite > 0 else 0
+    limite = limites_tarifa[tarifa_sel]
+    porcentaje_res = (total_residencial / limite * 100) if limite > 0 else 0
 
-total_bloques = 20
-bloques_llenos = int(total_bloques * porcentaje_res / 100)
-barra = "█" * min(bloques_llenos, total_bloques) + "░" * max(0, (total_bloques - bloques_llenos))
+    total_bloques = 20
+    bloques_llenos = int(total_bloques * porcentaje_res / 100)
+    barra = "█" * min(bloques_llenos, total_bloques) + "░" * max(0, (total_bloques - bloques_llenos))
 
-st.text(f"[{barra}] {porcentaje_res:.0f}% del límite de la tarifa {tarifa_sel}")
+    st.text(f"[{barra}] {porcentaje_res:.0f}% del límite de la tarifa {tarifa_sel}")
 
-if total_residencial > limite_tarifa:
-    st.error("🚨 *Has excedido el límite de tu tarifa.* Podrías estar **en riesgo de pasar a Tarifa DAC**, donde el costo por kWh es mucho más alto.")
-elif total_residencial >= limite_tarifa - 10:
-    st.warning("⚠️ *Te recomendamos moderar tu consumo de energía eléctrica* ya que estás **peligrosamente cerca** de cambiar a Tarifa DAC.")
-else:
-    st.success("✅ Tu consumo está dentro del rango seguro para tu tarifa.")
+    if total_residencial > limite_tarifa:
+        st.error("🚨 *Has excedido el límite de tu tarifa.* Podrías estar **en riesgo de pasar a Tarifa DAC**, donde el costo por kWh es mucho más alto.")
+    elif total_residencial >= limite_tarifa - 10:
+        st.warning("⚠️ *Te recomendamos moderar tu consumo de energía eléctrica* ya que estás **peligrosamente cerca** de cambiar a Tarifa DAC.")
+    else:
+        st.success("✅ Tu consumo está dentro del rango seguro para tu tarifa.")
 
 # ------------------------
 # Pestaña Consejos
