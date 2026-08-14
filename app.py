@@ -1481,7 +1481,7 @@ if st.session_state["mostrar_sankey"]:
                 label=labels,
                 pad=15,
                 thickness=20,
-                line=dict(color="black", width=0.5)
+                line=dict(color="black", width=0.5),
                 textfont=dict(color="black", size=13, family="Arial")
             ),
             link=dict(
