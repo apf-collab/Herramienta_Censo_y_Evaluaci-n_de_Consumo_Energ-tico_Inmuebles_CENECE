@@ -1472,15 +1472,22 @@ if st.session_state["mostrar_sankey"]:
                 sources.append(label_index[d["uso"]])
                 targets.append(label_index[d["subuso"]])
                 values.append(d["valor"])
-
+                
         fig = go.Figure(data=[go.Sankey(
-            node=dict(label=labels, pad=15, thickness=20
-                     # 🎨 FUENTE NEGRA Y DEFINIDA
-            font=dict(color="black", size=13, family="Arial")),
-            link=dict(source=sources, target=targets, value=values, 
-                      # 🎨 FLUJOS TRANS LÚCIDOS (Gris claro semitransparente)
-            color="rgba(210, 210, 210, 0.45)")
-            
+            node=dict(
+                label=labels,
+                pad=15,
+                thickness=20,
+                # 🎨 FUENTE NEGRA Y DEFINIDA
+                font=dict(color="black", size=13, family="Arial")
+            ),
+            link=dict(
+                source=sources,
+                target=targets,
+                value=values,
+                # 🎨 FLUJOS TRANS LÚCIDOS (Gris claro semitransparente)
+                color="rgba(210, 210, 210, 0.45)"
+            )
         )])
         fig.update_layout(title_text="🔌 Diagrama Sankey del consumo (kWh/mes)", font_size=12, height=600)
         st.plotly_chart(fig, use_container_width=True)
