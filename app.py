@@ -9,6 +9,19 @@ import plotly.graph_objects as go
 import plotly.express as px
 from io import BytesIO
 import time
+from docx import Document
+from datetime import date
+
+def generar_reporte_word(datos, plantilla_path, salida_path):
+    doc = Document(plantilla_path)
+
+    for paragraph in doc.paragraphs:
+        for key, value in datos.items():
+            marcador = f"{{{{{key}}}}}"
+            if marcador in paragraph.text:
+                paragraph.text = paragraph.text.replace(marcador, str(value))
+
+    doc.save(salida_path)
 
 # Reiniciar datos cada vez que se recarga la app
 if "sankey_data" not in st.session_state:
@@ -25,7 +38,9 @@ equipos_continuos = [
     "Servidores",
     "Routers Wi-Fi",
     "Bocina inteligente",
-    "Celular / Smartphone"
+    "Celular / Smartphone",
+    "Laptop",
+    "Bocina inteligente (Amazon Echo / Echo Dot, Google Nest Mini, Apple HomePod)"
 ]
 
 # ------------------------
@@ -34,16 +49,16 @@ equipos_continuos = [
 
 # Potencias nominales por subuso (W)
 potencias_nominales = {
-    "Tubo LED T8": 18, "Tubo LED T5": 16, "Foco LED": 10, "Panel LED": 40,
+    "Tubo LED T8": 18, "Tubo LED T5": 16, "Foco LED": 10, "Panel LED": 25,
     "Tubo fluorescente T8": 36, "Tubo fluorescente T5": 28, "Fluorescente compacto": 20,
-    "Incandescente": 60, "Halógena": 50, "Computadora de escritorio": 250, "Laptop": 100,
+    "Incandescente": 60, "Halógena": 50, "Computadora de escritorio": 250, "Laptop": 5.2,
     "Refrigerador": 47, "Cafetera": 1000, "Microondas": 1000, "Parrilla o estufa eléctrica": 1500,
     "Horno eléctrico": 1200, "Purificador de aire": 150, "Bomba de agua": 1800,
-    "Elevador": 6000, "Escaleras eléctricas": 10000, "Compresor": 4000,
+    "Elevador": 12000, "Escaleras eléctricas": 15000, "Compresor": 4000,
     "Fotocopiadora/ Impresora": 300, "Escáner": 30, "Multiusos": 100, "Ventilador individual": 80,
     "Cañones y proyectores": 200, "Teléfono analógico": 0.67, "Teléfono con pantalla": 1.65,
     "Teléfono inalámbrico": 3.3, "Routers Wi-Fi": 20, "Plancha": 1745, "Licuadora": 750,
-    "Ventilador de techo": 100, "Bocina inteligente (Amazon Echo / Echo Dot, Google Nest Mini, Apple HomePod)": 12,
+    "Ventilador de techo": 100, "Bocina inteligente (Amazon Echo / Echo Dot, Google Nest Mini, Apple HomePod)": 11,
     "Televisor LED / LCD": 150, "Televisor de plasma": 240, "Consola de videojuegos": 250, "Equipo de audio / estéreo": 120,
     "Lavadora 7-15 kg": 550, "Lavadora más de 15 kg": 800, "Secadora eléctrica": 1500, "Celular / Smartphone": 1.4,
     "Lavavajillas":1350, "Servicio de televisión por cable": 20, "Caminadora": 2000, "Eliptica eléctrica": 250, 
@@ -574,7 +589,7 @@ def calcular_kwh_mes(potencia_w, num_equipos=1, horas=8, factor_mensual=21, cont
 # INTERFAZ: PESTAÑAS
 # ------------------------
 
-tab_oficina, tab_salud, tab_otros, tab_residencial, tab_consejos = st.tabs(["🏢 Oficina", "🏥 Salud", "🏬 Otros usos", "🏠 Residencial", "💡 Consejos"])
+tab_oficina, tab_salud, tab_otros, tab_residencial, tab_consejos = st.tabs(["🏢 Oficina", "🏥 Salud", "🏦 Otros usos","🏠 Residencial", "💡 Consejos"])
 
 # Parámetros comunes (días de operación por semana -> factor mensual aproximado)
 
@@ -588,6 +603,15 @@ with st.sidebar:
         '</a>',
         unsafe_allow_html=True
     )
+    # ------------------------
+    # CONFIGURACIÓN DEL INMUEBLE (nuevo)
+    # ------------------------
+    modo_calculo = st.radio(
+        "¿Cómo deseas contabilizar el consumo del inmueble?",
+        ["Global (todo el edificio)", "Por piso"],
+        index=0,
+        key="modo_calculo"
+    )
 
     #st.markdown("### Parámetros globales")
     dias_semana = st.slider("Días de operación por semana:", 1, 7, 5)
@@ -600,45 +624,50 @@ with st.sidebar:
 # ------------------------
 with tab_oficina:
     st.header("🏢 Oficina — entrada de equipos y servicios")
-    usos = usos_por_inmueble["Oficina"]
-    usos_seleccionados = st.multiselect("Selecciona los usos de Oficina:", usos, key="oficina_usos")
+    
+    # ------------------------
+    # MODO GLOBAL
+    # ------------------------
+    if modo_calculo == "Global (todo el edificio)":
+        usos = usos_por_inmueble["Oficina"]
+        usos_seleccionados = st.multiselect("Selecciona los usos de Oficina:", usos, key="oficina_usos")
 
-    for uso in usos_seleccionados:
-        st.subheader(uso)
-        if uso in subusos:
-            for sub in subusos[uso]:
-                key_base = f"of_{uso}_{sub}"
-                marcado = st.checkbox(f"{sub}", key=key_base)
-                if marcado:
-                    # Agregar subuso a lista global de seleccionados (para consejos)
-                    agregar_subuso_seleccionado(sub)
+        for uso in usos_seleccionados:
+            st.subheader(uso)
+            if uso in subusos:
+                for sub in subusos[uso]:
+                    key_base = f"of_{uso}_{sub}"
+                    marcado = st.checkbox(f"{sub}", key=key_base)
+                    if marcado:
+                        agregar_subuso_seleccionado(sub)
 
-                    # Flujo de entrada común:
-                    if uso == "Acondicionamiento de aire" and sub in cop_data:
-                        num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
-                        antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
-                        toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=1.0, key=f"{key_base}_ton")
-                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
-                        COP = cop_data[sub][antig]
-                        pot_w = pot_w_por_tr(toneladas, COP)
-                        kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
-#                       st.write(f"Consumo mensual aproximado: **{kwh_mes} kWh** — Potencia por equipo ~ {round(pot_w,2)} W (COP={COP})")
-                        st.session_state["sankey_data"].append({"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes})
-                    else:
-    # Si es "Otro", permitir varios equipos personalizados
-                        # --- Caso especial: permitir ingreso libre también para algunos subusos ---
-                        if sub in ["Otros", "Otro"]:
-                            # Recuperar lista de equipos del estado
+                        # --- CASO 1: Aire acondicionado ---
+                        if uso == "Acondicionamiento de aire" and sub in cop_data:
+                            num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                            antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
+                            toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=1.0, key=f"{key_base}_ton")
+                            horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                            COP = cop_data[sub][antig]
+                            pot_w = pot_w_por_tr(toneladas, COP)
+                            kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
+                            st.session_state["sankey_data"].append({
+                                "origen": "Energía eléctrica",
+                                "uso": uso,
+                                "subuso": sub,
+                                "valor": kwh_mes
+                            })
+
+                        # --- CASO 2: Subuso "Otros" ---
+                        elif sub in ["Otros", "Otro"]:
                             otros_equipos = st.session_state.get(f"{key_base}_otros", [])
-
-                            # Botón para agregar un nuevo equipo
                             agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
+
                             if agregar:
                                 otros_equipos.append({"nombre": "", "potencia": 0, "horas": 8})
                                 st.session_state[f"{key_base}_otros"] = otros_equipos
                                 st.rerun()
 
-                            # Mostrar los equipos agregados
                             for i, equipo in enumerate(otros_equipos):
                                 with st.expander(f"⚙️ Equipo {i+1} — {equipo.get('nombre','(sin nombre)')}", expanded=True):
                                     cols = st.columns([3, 1])
@@ -651,35 +680,30 @@ with tab_oficina:
                                     potencia = st.number_input("Potencia (W):", min_value=0, max_value=50000, value=equipo.get("potencia", 100), key=f"{key_base}_pot_{i}")
                                     horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=float(equipo.get("horas", 8.0)), step=1.0, key=f"{key_base}_hr_{i}")
 
-                                    # Actualizar valores
                                     otros_equipos[i] = {"nombre": nombre, "potencia": potencia, "horas": horas}
                                     st.session_state[f"{key_base}_otros"] = otros_equipos
 
-                                    # Calcular consumo
-                                    kwh_mes = round(potencia / 1000 * horas * factor_mensual, 2)
+                                    kwh_mes = round(potencia / 1000 * horas * num_eq * factor_mensual, 2)
                                     nuevo_registro = {
                                         "origen": "Energía eléctrica",
                                         "uso": uso,
                                         "subuso": nombre or sub,
                                         "valor": kwh_mes
                                     }
-
-                                    # Evita duplicados en sankey
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
-
-                                    # 🗑️ Eliminar equipo
                                     if eliminar:
                                         otros_equipos.pop(i)
                                         st.session_state[f"{key_base}_otros"] = otros_equipos
                                         st.rerun()
 
+                        # --- CASO 3: Equipos normales ---
                         else:
-                            # --- Equipos normales ---
                             num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+
                             if sub in equipos_continuos:
                                 horas = 24
-                                st.info("⏱️ Este equipo permanece conectado las 24 horas del día.")
+                                st.info("⏱️ Este equipo es de uso continuo.")
                             else:
                                 horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
@@ -697,58 +721,143 @@ with tab_oficina:
                                 factor_mensual=factor_mensual,
                                 continuo=(sub in equipos_continuos)
                             )
-                            nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes}
+                            nuevo_registro = {
+                                "origen": "Energía eléctrica",
+                                "uso": uso,
+                                "subuso": sub,
+                                "valor": kwh_mes
+                            }
                             if nuevo_registro not in st.session_state["sankey_data"]:
                                 st.session_state["sankey_data"].append(nuevo_registro)
+
+    # ------------------------
+    # MODO POR PISO
+    # ------------------------
+    elif modo_calculo == "Por piso":
+        st.subheader("🏢 Cálculo de consumo por piso — Oficina")
+
+        num_pisos = st.number_input(
+            "Número de pisos del inmueble:",
+            min_value=1, step=1, value=1, key="oficina_pisos"
+        )
+
+        for piso in range(1, num_pisos + 1):
+            with st.expander(f"Piso {piso}", expanded=(piso == 1)):
+                usos = usos_por_inmueble["Oficina"]
+                usos_sel = st.multiselect(f"Selecciona los usos en Piso {piso}:", usos, key=f"of_usos_piso_{piso}")
+
+                for uso in usos_sel:
+                    st.subheader(f"{uso} (Piso {piso})")
+
+                    if uso in subusos:
+                        for sub in subusos[uso]:
+                            key_base = f"of_p{piso}_{uso}_{sub}"
+                            marcado = st.checkbox(sub, key=f"{key_base}_check")
+                            if marcado:
+                                agregar_subuso_seleccionado(sub)
+
+                                # --- Aire acondicionado ---
+                                if uso == "Acondicionamiento de aire" and sub in cop_data:
+                                    num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
+                                    toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=1.0, key=f"{key_base}_ton")
+                                    horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+                                    COP = cop_data[sub][antig]
+                                    pot_w = pot_w_por_tr(toneladas, COP)
+                                    kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
+                                    st.session_state["sankey_data"].append({
+                                        "origen": "Energía eléctrica",
+                                        "piso": f"Piso {piso}",
+                                        "uso": uso,
+                                        "subuso": sub,
+                                        "valor": kwh_mes
+                                    })
+
+                                # --- Equipos normales / otros ---
+                                else:
+                                    num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+
+                                    if sub in equipos_continuos:
+                                        horas = 24
+                                        st.info("⏱️ Este equipo es de uso continuo.")
+                                    else:
+                                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                                    potencia = potencias_nominales.get(sub)
+                                    if potencia is None:
+                                        potencia = st.number_input(
+                                            f"Potencia (W) ({sub})", 0, 50000, 200, key=f"{key_base}_pot"
+                                        )
+
+                                    kwh_mes = calcular_kwh_mes(
+                                        potencia_w=potencia,
+                                        num_equipos=num_equipos,
+                                        horas=horas,
+                                        factor_mensual=factor_mensual,
+                                        continuo=(sub in equipos_continuos)
+                                    )
+
+                                    nuevo_registro = {
+                                        "origen": "Energía eléctrica",
+                                        "piso": f"Piso {piso}",
+                                        "uso": uso,
+                                        "subuso": sub,
+                                        "valor": kwh_mes
+                                    }
+
+                                    if nuevo_registro not in st.session_state["sankey_data"]:
+                                        st.session_state["sankey_data"].append(nuevo_registro)
+
+        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
 # ------------------------
 # Pestaña Salud
 # ------------------------
 with tab_salud:
     st.header("🏥 Salud — entrada de equipos y servicios")
-    usos = usos_por_inmueble["Salud"]
-    usos_seleccionados = st.multiselect("Selecciona los usos de Salud:", usos, key="salud_usos")
 
-    for uso in usos_seleccionados:
-        st.subheader(uso)
-        if uso in subusos:
-            for sub in subusos[uso]:
-                key_base = f"sal_{uso}_{sub}"
-                marcado = st.checkbox(f"{sub}", key=key_base)
-                if marcado:
-                    agregar_subuso_seleccionado(sub)
+    # ------------------------
+    # MODO GLOBAL
+    # ------------------------
+    if modo_calculo == "Global (todo el edificio)":
+        usos = usos_por_inmueble["Salud"]
+        usos_seleccionados = st.multiselect("Selecciona los usos de Salud:", usos, key="salud_usos")
 
-                    # --- Caso especial: Acondicionamiento de aire ---
-                    if uso == "Acondicionamiento de aire" and sub in cop_data:
-                        num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
-                        antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
-                        toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=1.0, key=f"{key_base}_ton")
-                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
-                        COP = cop_data[sub][antig]
-                        pot_w = pot_w_por_tr(toneladas, COP)
-                        kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
+        for uso in usos_seleccionados:
+            st.subheader(uso)
+            if uso in subusos:
+                for sub in subusos[uso]:
+                    key_base = f"sal_{uso}_{sub}"
+                    marcado = st.checkbox(f"{sub}", key=key_base)
+                    if marcado:
+                        agregar_subuso_seleccionado(sub)
 
-                        st.session_state["sankey_data"].append({
-                            "origen": "Energía eléctrica",
-                            "uso": uso,
-                            "subuso": sub,
-                            "valor": kwh_mes
-                        })
+                        # --- CASO 1: Aire acondicionado ---
+                        if uso == "Acondicionamiento de aire" and sub in cop_data:
+                            num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                            antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
+                            toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=1.0, key=f"{key_base}_ton")
+                            horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
-                    else:
-                        # --- Caso especial: permitir ingreso libre también para algunos subusos ---
-                        if sub in ["Otros", "Otro", "Equipos médicos", "Equipos de laboratorio", "Servicios auxiliares (esterilización, calentadores eléctricos etc)"]:
-                            # Recuperar lista de equipos del estado
+                            COP = cop_data[sub][antig]
+                            pot_w = pot_w_por_tr(toneladas, COP)
+                            kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
+                            st.session_state["sankey_data"].append({
+                                "origen": "Energía eléctrica",
+                                "uso": uso,
+                                "subuso": sub,
+                                "valor": kwh_mes
+                            })
+
+                        # --- CASO 2: Subuso “Otros / libre ingreso” ---
+                        elif sub in ["Otros", "Otro", "Equipos médicos", "Equipos de laboratorio", "Servicios auxiliares (esterilización, calentadores eléctricos etc)"]:
                             otros_equipos = st.session_state.get(f"{key_base}_otros", [])
-
-                            # Botón para agregar un nuevo equipo
                             agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
                             if agregar:
                                 otros_equipos.append({"nombre": "", "potencia": 0, "horas": 8})
                                 st.session_state[f"{key_base}_otros"] = otros_equipos
                                 st.rerun()
 
-                            # Mostrar los equipos agregados
                             for i, equipo in enumerate(otros_equipos):
                                 with st.expander(f"⚙️ Equipo {i+1} — {equipo.get('nombre','(sin nombre)')}", expanded=True):
                                     cols = st.columns([3, 1])
@@ -761,99 +870,154 @@ with tab_salud:
                                     potencia = st.number_input("Potencia (W):", min_value=0, max_value=50000, value=equipo.get("potencia", 100), key=f"{key_base}_pot_{i}")
                                     horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=float(equipo.get("horas", 8.0)), step=1.0, key=f"{key_base}_hr_{i}")
 
-                                    # Actualizar valores
                                     otros_equipos[i] = {"nombre": nombre, "potencia": potencia, "horas": horas}
                                     st.session_state[f"{key_base}_otros"] = otros_equipos
 
-                                    # Calcular consumo
                                     kwh_mes = round(potencia / 1000 * horas * factor_mensual, 2)
-                                    nuevo_registro = {
-                                        "origen": "Energía eléctrica",
-                                        "uso": uso,
-                                        "subuso": nombre or sub,
-                                        "valor": kwh_mes
-                                    }
-
-                                    # Evita duplicados en sankey
+                                    nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": nombre or sub, "valor": kwh_mes}
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-                                    # 🗑️ Eliminar equipo
                                     if eliminar:
                                         otros_equipos.pop(i)
                                         st.session_state[f"{key_base}_otros"] = otros_equipos
                                         st.rerun()
 
+                        # --- CASO 3: Equipos normales ---
                         else:
-                            # --- Equipos normales ---
                             num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
                             if sub in equipos_continuos:
                                 horas = 24
-                                st.info("⏱️ Este equipo permanece conectado las 24 horas del día.")
+                                st.info("⏱️ Este equipo es de uso continuo.")
                             else:
                                 horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
                             potencia = potencias_nominales.get(sub)
                             if potencia is None:
-                                potencia = st.number_input(
-                                    f"Potencia (W) ({sub}), si no la conoces revisa la etiqueta del equipo (W=V*A)",
-                                    0, 50000, 200, key=f"{key_base}_pot"
-                                )
+                                potencia = st.number_input(f"Potencia (W) ({sub})", 0, 50000, 200, key=f"{key_base}_pot")
 
-                            kwh_mes = calcular_kwh_mes(
-                                potencia_w=potencia,
-                                num_equipos=num_equipos,
-                                horas=horas,
-                                factor_mensual=factor_mensual,
-                                continuo=(sub in equipos_continuos)
-                            )
+                            kwh_mes = calcular_kwh_mes(potencia_w=potencia, num_equipos=num_equipos, horas=horas, factor_mensual=factor_mensual, continuo=(sub in equipos_continuos))
                             nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes}
                             if nuevo_registro not in st.session_state["sankey_data"]:
                                 st.session_state["sankey_data"].append(nuevo_registro)
+
+    # ------------------------
+    # MODO POR PISO
+    # ------------------------
+    elif modo_calculo == "Por piso":
+        st.subheader("🏥 Cálculo de consumo por piso — Salud")
+        num_pisos = st.number_input("Número de pisos del inmueble:", min_value=1, step=1, value=1, key="salud_pisos")
+
+        for piso in range(1, num_pisos + 1):
+            with st.expander(f"Piso {piso}", expanded=(piso == 1)):
+                usos = usos_por_inmueble["Salud"]
+                usos_sel = st.multiselect(f"Selecciona los usos en Piso {piso}:", usos, key=f"sal_usos_piso_{piso}")
+
+                for uso in usos_sel:
+                    st.subheader(f"{uso} (Piso {piso})")
+
+                    if uso in subusos:
+                        for sub in subusos[uso]:
+                            key_base = f"sal_p{piso}_{uso}_{sub}"
+                            marcado = st.checkbox(sub, key=f"{key_base}_check")
+                            if marcado:
+                                agregar_subuso_seleccionado(sub)
+
+                                # --- Aire acondicionado ---
+                                if uso == "Acondicionamiento de aire" and sub in cop_data:
+                                    num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
+                                    toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=1.0, key=f"{key_base}_ton")
+                                    horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                                    COP = cop_data[sub][antig]
+                                    pot_w = pot_w_por_tr(toneladas, COP)
+                                    kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
+
+                                    st.session_state["sankey_data"].append({
+                                        "origen": "Energía eléctrica",
+                                        "piso": f"Piso {piso}",
+                                        "uso": uso,
+                                        "subuso": sub,
+                                        "valor": kwh_mes
+                                    })
+
+                                # --- Equipos normales / otros ---
+                                else:
+                                    num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    if sub in equipos_continuos:
+                                        horas = 24
+                                        st.info("⏱️ Este equipo permanece conectado las 24 horas del día.")
+                                    else:
+                                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                                    potencia = potencias_nominales.get(sub)
+                                    if potencia is None:
+                                        potencia = st.number_input(f"Potencia (W) ({sub})", 0, 50000, 200, key=f"{key_base}_pot")
+
+                                    kwh_mes = calcular_kwh_mes(potencia_w=potencia, num_equipos=num_equipos, horas=horas, factor_mensual=factor_mensual, continuo=(sub in equipos_continuos))
+                                    nuevo_registro = {
+                                        "origen": "Energía eléctrica",
+                                        "piso": f"Piso {piso}",
+                                        "uso": uso,
+                                        "subuso": sub,
+                                        "valor": kwh_mes
+                                    }
+
+                                    if nuevo_registro not in st.session_state["sankey_data"]:
+                                        st.session_state["sankey_data"].append(nuevo_registro)
+
+        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
 # ------------------------
 # Pestaña Otros usos
 # ------------------------
 with tab_otros:
-    st.header("🏬 Otros usos — entrada de equipos y servicios")
-    usos = usos_por_inmueble["Otros usos"]
-    usos_seleccionados = st.multiselect("Selecciona los usos de Otros:", usos, key="otros_usos")
+    st.header("🏦 Otros usos — entrada de equipos y servicios")
 
-    for uso in usos_seleccionados:
-        st.subheader(uso)
-        if uso in subusos:
-            for sub in subusos[uso]:
-                key_base = f"otr_{uso}_{sub}"
-                marcado = st.checkbox(f"{sub}", key=key_base)
-                if marcado:
-                    agregar_subuso_seleccionado(sub)
-                    if uso == "Acondicionamiento de aire" and sub in cop_data:
-                        num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
-                        antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
-                        toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_ton")
-                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
-                        COP = cop_data[sub][antig]
-                        pot_w = pot_w_por_tr(toneladas, COP)
-                        kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
-#                       st.write(f"Consumo mensual aproximado: **{kwh_mes} kWh** — Potencia por equipo ~ {round(pot_w,2)} W (COP={COP})")
-                        st.session_state["sankey_data"].append({"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes})
+    # ------------------------
+    # MODO GLOBAL
+    # ------------------------
+    if modo_calculo == "Global (todo el edificio)":
+        usos = usos_por_inmueble["Otros usos"]
+        usos_seleccionados = st.multiselect("Selecciona los usos de Otros:", usos, key="otros_usos")
 
-                    # --- Equipos generales ---
-                    else:
-    # Si es "Otro", permitir varios equipos personalizados
-                        # --- Caso especial: permitir ingreso libre también para algunos subusos ---
-                        if sub in ["Otros", "Otro"]:
-                            # Recuperar lista de equipos del estado
+        for uso in usos_seleccionados:
+            st.subheader(uso)
+            if uso in subusos:
+                for sub in subusos[uso]:
+                    key_base = f"otr_{uso}_{sub}"
+                    marcado = st.checkbox(f"{sub}", key=key_base)
+                    if marcado:
+                        agregar_subuso_seleccionado(sub)
+
+                        # --- CASO 1: Aire acondicionado ---
+                        if uso == "Acondicionamiento de aire" and sub in cop_data:
+                            num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                            antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
+                            toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_ton")
+                            horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                            COP = cop_data[sub][antig]
+                            pot_w = pot_w_por_tr(toneladas, COP)
+                            kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
+
+                            st.session_state["sankey_data"].append({
+                                "origen": "Energía eléctrica",
+                                "uso": uso,
+                                "subuso": sub,
+                                "valor": kwh_mes
+                            })
+
+                        # --- CASO 2: Subuso “Otros / libre ingreso” ---
+                        elif sub in ["Otros", "Otro"]:
                             otros_equipos = st.session_state.get(f"{key_base}_otros", [])
-
-                            # Botón para agregar un nuevo equipo
                             agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
                             if agregar:
                                 otros_equipos.append({"nombre": "", "potencia": 0, "horas": 8})
                                 st.session_state[f"{key_base}_otros"] = otros_equipos
                                 st.rerun()
 
-                            # Mostrar los equipos agregados
                             for i, equipo in enumerate(otros_equipos):
                                 with st.expander(f"⚙️ Equipo {i+1} — {equipo.get('nombre','(sin nombre)')}", expanded=True):
                                     cols = st.columns([3, 1])
@@ -866,57 +1030,107 @@ with tab_otros:
                                     potencia = st.number_input("Potencia (W):", min_value=0, max_value=50000, value=equipo.get("potencia", 100), key=f"{key_base}_pot_{i}")
                                     horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=float(equipo.get("horas", 8.0)), step=1.0, key=f"{key_base}_hr_{i}")
 
-                                    # Actualizar valores
                                     otros_equipos[i] = {"nombre": nombre, "potencia": potencia, "horas": horas}
                                     st.session_state[f"{key_base}_otros"] = otros_equipos
 
-                                    # Calcular consumo
                                     kwh_mes = round(potencia / 1000 * horas * factor_mensual, 2)
-                                    nuevo_registro = {
-                                        "origen": "Energía eléctrica",
-                                        "uso": uso,
-                                        "subuso": nombre or sub,
-                                        "valor": kwh_mes
-                                    }
-
-                                    # Evita duplicados en sankey
+                                    nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": nombre or sub, "valor": kwh_mes}
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-                                    # 🗑️ Eliminar equipo
                                     if eliminar:
                                         otros_equipos.pop(i)
                                         st.session_state[f"{key_base}_otros"] = otros_equipos
                                         st.rerun()
 
+                        # --- CASO 3: Equipos normales ---
                         else:
-                            # --- Equipos normales ---
                             num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
                             if sub in equipos_continuos:
                                 horas = 24
-                                st.info("⏱️ Este equipo permanece conectado las 24 horas del día.")
+                                st.info("⏱️ Este equipo es de uso continuo.")
                             else:
                                 horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
                             potencia = potencias_nominales.get(sub)
                             if potencia is None:
-                                potencia = st.number_input(
-                                    f"Potencia (W) ({sub}), si no la conoces revisa la etiqueta del equipo (W=V*A)",
-                                    0, 50000, 200, key=f"{key_base}_pot"
-                                )
-                            kwh_mes = calcular_kwh_mes(
-                                potencia_w=potencia,
-                                num_equipos=num_equipos,
-                                horas=horas,
-                                factor_mensual=factor_mensual,
-                                continuo=(sub in equipos_continuos)
-                            )
+                                potencia = st.number_input(f"Potencia (W) ({sub})", 0, 50000, 200, key=f"{key_base}_pot")
+
+                            kwh_mes = calcular_kwh_mes(potencia_w=potencia, num_equipos=num_equipos, horas=horas, factor_mensual=factor_mensual, continuo=(sub in equipos_continuos))
                             nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes}
                             if nuevo_registro not in st.session_state["sankey_data"]:
                                 st.session_state["sankey_data"].append(nuevo_registro)
 
+    # ------------------------
+    # MODO POR PISO
+    # ------------------------
+    elif modo_calculo == "Por piso":
+        st.subheader("🏦 Cálculo de consumo por piso — Otros usos")
+        num_pisos = st.number_input("Número de pisos del inmueble:", min_value=1, step=1, value=1, key="otros_pisos")
+
+        for piso in range(1, num_pisos + 1):
+            with st.expander(f"Piso {piso}", expanded=(piso == 1)):
+                usos = usos_por_inmueble["Otros usos"]
+                usos_sel = st.multiselect(f"Selecciona los usos en Piso {piso}:", usos, key=f"otr_usos_piso_{piso}")
+
+                for uso in usos_sel:
+                    st.subheader(f"{uso} (Piso {piso})")
+
+                    if uso in subusos:
+                        for sub in subusos[uso]:
+                            key_base = f"otr_p{piso}_{uso}_{sub}"
+                            marcado = st.checkbox(sub, key=f"{key_base}_check")
+                            if marcado:
+                                agregar_subuso_seleccionado(sub)
+
+                                # --- Aire acondicionado ---
+                                if uso == "Acondicionamiento de aire" and sub in cop_data:
+                                    num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
+                                    toneladas = st.number_input("Toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_ton")
+                                    horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                                    COP = cop_data[sub][antig]
+                                    pot_w = pot_w_por_tr(toneladas, COP)
+                                    kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
+
+                                    st.session_state["sankey_data"].append({
+                                        "origen": "Energía eléctrica",
+                                        "piso": f"Piso {piso}",
+                                        "uso": uso,
+                                        "subuso": sub,
+                                        "valor": kwh_mes
+                                    })
+
+                                # --- Equipos normales / otros ---
+                                else:
+                                    num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    if sub in equipos_continuos:
+                                        horas = 24
+                                        st.info("⏱️ Este equipo es de uso continuo.")
+                                    else:
+                                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                                    potencia = potencias_nominales.get(sub)
+                                    if potencia is None:
+                                        potencia = st.number_input(f"Potencia (W) ({sub})", 0, 50000, 200, key=f"{key_base}_pot")
+
+                                    kwh_mes = calcular_kwh_mes(potencia_w=potencia, num_equipos=num_equipos, horas=horas, factor_mensual=factor_mensual, continuo=(sub in equipos_continuos))
+                                    nuevo_registro = {
+                                        "origen": "Energía eléctrica",
+                                        "piso": f"Piso {piso}",
+                                        "uso": uso,
+                                        "subuso": sub,
+                                        "valor": kwh_mes
+                                    }
+
+                                    if nuevo_registro not in st.session_state["sankey_data"]:
+                                        st.session_state["sankey_data"].append(nuevo_registro)
+
+        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
+
 # ------------------------
-# Pestaña Residencial (nueva)
+# Pestaña Residencial (completa)
 # ------------------------
 
 # Inicializar session_state para controlar mensaje
@@ -930,77 +1144,69 @@ with tab_residencial:
         st.toast("Para Inmuebles de uso residencial selecciona 7 días de operación.", icon="📌")
         st.session_state.res_tab_msg_shown = True
 
-    st.header("🏠 Residencial — entrada de equipos y servicios")
-   
+#    st.header("🏘️ Residencial — entrada de equipos y servicios")
+    
     # Límites mensuales de consumo por tarifa (kWh/mes)
     limites_tarifa = {
-        "1": 250,
-        "1A": 300,
-        "1B": 400,
-        "1C": 850,
-        "1D": 1000,
-        "1E": 2000,
-        "1F": 2500,
-        } 
+        "1": 250, "1A": 300, "1B": 400, "1C": 850, "1D": 1000, "1E": 2000, "1F": 2500
+    } 
 
- # Selección de tarifa
+    # Selección de tarifa
     tarifa_sel = st.selectbox(
         "Selecciona la tarifa doméstica que aplica a tu vivienda:",
         ["1", "1A", "1B", "1C", "1D", "1E", "1F"],
         index=0
     )
-
     limite_tarifa = limites_tarifa[tarifa_sel]
-    #st.info(f"📌 Para la tarifa **{tarifa_sel}**, el límite mensual es **{limite_tarifa} kWh/mes** antes de pasar a Tarifa DAC.")
     st.markdown("Selecciona los equipos y servicios residenciales que quieras calcular.")
 
-    # Lista de subusos residenciales (combinamos categorías relevantes)
-    usos_residenciales = ["Iluminación", "Acondicionamiento de aire residencial", "Electrodomésticos residenciales", "Equipos de cómputo", "Entretenimiento", "Equipos sanitarios", "Otros"]
-    usos_sel_res = st.multiselect("Selecciona los usos residenciales:", usos_residenciales, key="res_usos")
+    # Lista de subusos residenciales
+    usos_residenciales = ["Iluminación", "Acondicionamiento de aire residencial", "Electrodomésticos residenciales", 
+                          "Equipos de cómputo", "Entretenimiento", "Equipos sanitarios", "Otros"]
 
-    for uso in usos_sel_res:
-        st.subheader(uso)
-        if uso in subusos:
-            for sub in subusos[uso]:
-                key_base = f"res_{uso}_{sub}"
-                marcado = st.checkbox(f"{sub}", key=key_base)
-                if marcado:
-                    # registrar para consejos
-                    agregar_subuso_seleccionado(sub)
+    # ------------------------
+    # MODO GLOBAL
+    # ------------------------
+    if modo_calculo == "Global (todo el edificio)":
+        usos_sel_res = st.multiselect("Selecciona los usos residenciales:", usos_residenciales, key="res_usos_global")
 
-                    # Acondicionamiento residencial (caso especial TR <-> m2)
-                    if uso == "Acondicionamiento de aire residencial" and sub in cop__data:
-                        num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
-                        antiguedad = st.selectbox("Antigüedad del equipo:", ["nuevo", "5-10 años"], key=f"{key_base}_ant")
-                        metodo = st.radio("¿Ingresar Toneladas (TR) o metros cuadrados que enfría?", ["Toneladas (TR)", "Metros cuadrados (m²)"], key=f"{key_base}_metodo")
-                        if metodo == "Toneladas (TR)":
-                            toneladas = st.number_input("Ingrese las toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_ton")
-                        else:
-                            m2 = st.number_input("Ingrese los metros cuadrados que enfría:", min_value=1.0, value=10.0, step=1.0, key=f"{key_base}_m2")
-                            toneladas = calcular_tr_desde_m2(m2)
-                            st.write(f"Toneladas estimadas: **{round(toneladas,2)} TR** (a partir de {m2} m²)")
-                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
-                        COP = cop__data[sub][antiguedad]
-                        pot_w = pot_w_por_tr(toneladas, COP)
-                        kwh_mes = kwh_mes_desde_potencia(pot_w, num_equipos, horas, factor_mensual)
-#                       st.write(f"Consumo mensual aproximado: **{kwh_mes} kWh** — Potencia por equipo ~ {round(pot_w,2)} W (COP={COP})")
-                        st.session_state["sankey_data"].append({"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes})
+        for uso in usos_sel_res:
+            st.subheader(uso)
+            if uso in subusos:
+                for sub in subusos[uso]:
+                    key_base = f"res_{uso}_{sub}"
+                    marcado = st.checkbox(f"{sub}", key=key_base)
+                    if marcado:
+                        agregar_subuso_seleccionado(sub)
 
-                    else:
-    # Si es "Otro", permitir varios equipos personalizados
-                        # --- Caso especial: permitir ingreso libre también para algunos subusos ---
-                        if sub in ["Otros", "Otro"]:
-                            # Recuperar lista de equipos del estado
+                        # --- Acondicionamiento residencial ---
+                        if uso == "Acondicionamiento de aire residencial" and sub in cop__data:
+                            num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                            antiguedad = st.selectbox("Antigüedad del equipo:", ["nuevo", "5-10 años"], key=f"{key_base}_ant")
+                            metodo = st.radio("¿Ingresar Toneladas (TR) o metros cuadrados que enfría?", 
+                                              ["Toneladas (TR)", "Metros cuadrados (m²)"], key=f"{key_base}_metodo")
+                            if metodo == "Toneladas (TR)":
+                                toneladas = st.number_input("Ingrese las toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_ton")
+                            else:
+                                m2 = st.number_input("Ingrese los metros cuadrados que enfría:", min_value=1.0, value=10.0, step=1.0, key=f"{key_base}_m2")
+                                toneladas = calcular_tr_desde_m2(m2)
+                                st.write(f"Toneladas estimadas: **{round(toneladas,2)} TR** (a partir de {m2} m²)")
+
+                            horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+                            COP = cop__data[sub][antiguedad]
+                            pot_w = pot_w_por_tr(toneladas, COP)
+                            kwh_mes = kwh_mes_desde_potencia(pot_w, num_equipos, horas, factor_mensual)
+                            st.session_state["sankey_data"].append({"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes})
+
+                        # --- Subuso "Otros" / ingreso libre ---
+                        elif sub in ["Otros", "Otro"]:
                             otros_equipos = st.session_state.get(f"{key_base}_otros", [])
-
-                            # Botón para agregar un nuevo equipo
                             agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
                             if agregar:
                                 otros_equipos.append({"nombre": "", "potencia": 0, "horas": 8})
                                 st.session_state[f"{key_base}_otros"] = otros_equipos
                                 st.rerun()
 
-                            # Mostrar los equipos agregados
                             for i, equipo in enumerate(otros_equipos):
                                 with st.expander(f"⚙️ Equipo {i+1} — {equipo.get('nombre','(sin nombre)')}", expanded=True):
                                     cols = st.columns([3, 1])
@@ -1013,61 +1219,135 @@ with tab_residencial:
                                     potencia = st.number_input("Potencia (W):", min_value=0, max_value=50000, value=equipo.get("potencia", 100), key=f"{key_base}_pot_{i}")
                                     horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=float(equipo.get("horas", 8.0)), step=1.0, key=f"{key_base}_hr_{i}")
 
-                                    # Actualizar valores
                                     otros_equipos[i] = {"nombre": nombre, "potencia": potencia, "horas": horas}
                                     st.session_state[f"{key_base}_otros"] = otros_equipos
 
-                                    # Calcular consumo
                                     kwh_mes = round(potencia / 1000 * horas * factor_mensual, 2)
-                                    nuevo_registro = {
-                                        "origen": "Energía eléctrica",
-                                        "uso": uso,
-                                        "subuso": nombre or sub,
-                                        "valor": kwh_mes
-                                    }
-
-                                    # Evita duplicados en sankey
+                                    nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": nombre or sub, "valor": kwh_mes}
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-                                    # 🗑️ Eliminar equipo
                                     if eliminar:
                                         otros_equipos.pop(i)
                                         st.session_state[f"{key_base}_otros"] = otros_equipos
                                         st.rerun()
 
+                        # --- Equipos normales ---
                         else:
-                            # --- Equipos normales ---
                             num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
                             if sub in equipos_continuos:
                                 horas = 24
-                                st.info("⏱️ Este equipo permanece conectado las 24 horas del día.")
+                                st.info("⏱️ Este equipo es de uso continuo.")
                             else:
                                 horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
                             potencia = potencias_nominales.get(sub)
                             if potencia is None:
-                                potencia = st.number_input(
-                                    f"Potencia (W) ({sub}), si no la conoces revisa la etiqueta del equipo (W=V*A)",
-                                    0, 50000, 200, key=f"{key_base}_pot"
-                                )
+                                potencia = st.number_input(f"Potencia (W) ({sub})", 0, 50000, 200, key=f"{key_base}_pot")
 
-                            kwh_mes = calcular_kwh_mes(
-                                potencia_w=potencia,
-                                num_equipos=num_equipos,
-                                horas=horas,
-                                factor_mensual=factor_mensual,
-                                continuo=(sub in equipos_continuos)
-                            )
+                            kwh_mes = calcular_kwh_mes(potencia_w=potencia, num_equipos=num_equipos, horas=horas, factor_mensual=factor_mensual, continuo=(sub in equipos_continuos))
                             nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes}
                             if nuevo_registro not in st.session_state["sankey_data"]:
                                 st.session_state["sankey_data"].append(nuevo_registro)
+                                
+    # ------------------------
+    # MODO POR PISO
+    # ------------------------
+    elif modo_calculo == "Por piso":
+        st.subheader("🏘️ Cálculo de consumo por piso — Residencial")
+        num_pisos = st.number_input("Número de pisos del inmueble:", min_value=1, step=1, value=1, key="res_pisos")
+
+        for piso in range(1, num_pisos + 1):
+            with st.expander(f"Piso {piso}", expanded=(piso == 1)):
+                usos_sel_res = st.multiselect(f"Selecciona los usos residenciales en Piso {piso}:", usos_residenciales, key=f"res_usos_piso_{piso}")
+
+                for uso in usos_sel_res:
+                    st.subheader(f"{uso} (Piso {piso})")
+                    if uso in subusos:
+                        for sub in subusos[uso]:
+                            key_base = f"res_p{piso}_{uso}_{sub}"
+                            marcado = st.checkbox(sub, key=f"{key_base}_check")
+                            if marcado:
+                                agregar_subuso_seleccionado(sub)
+
+                                # --- Acondicionamiento residencial ---
+                                if uso == "Acondicionamiento de aire residencial" and sub in cop__data:
+                                    num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    antiguedad = st.selectbox("Antigüedad del equipo:", ["nuevo", "5-10 años"], key=f"{key_base}_ant")
+                                    metodo = st.radio("¿Ingresar Toneladas (TR) o metros cuadrados que enfría?", 
+                                                      ["Toneladas (TR)", "Metros cuadrados (m²)"], key=f"{key_base}_metodo")
+                                    if metodo == "Toneladas (TR)":
+                                        toneladas = st.number_input("Ingrese las toneladas de refrigeración (TR):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_ton")
+                                    else:
+                                        m2 = st.number_input("Ingrese los metros cuadrados que enfría:", min_value=1.0, value=10.0, step=1.0, key=f"{key_base}_m2")
+                                        toneladas = calcular_tr_desde_m2(m2)
+                                        st.write(f"Toneladas estimadas: **{round(toneladas,2)} TR** (a partir de {m2} m²)")
+
+                                    horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+                                    COP = cop__data[sub][antiguedad]
+                                    pot_w = pot_w_por_tr(toneladas, COP)
+                                    kwh_mes = kwh_mes_desde_potencia(pot_w, num_equipos, horas, factor_mensual)
+                                    st.session_state["sankey_data"].append({"origen": "Energía eléctrica", "piso": f"Piso {piso}", "uso": uso, "subuso": sub, "valor": kwh_mes})
+
+                                # --- Subuso “Otros” / ingreso libre ---
+                                elif sub in ["Otros", "Otro"]:
+                                    otros_equipos = st.session_state.get(f"{key_base}_otros", [])
+                                   agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
+                                    if agregar:
+                                        otros_equipos.append({"nombre": "", "potencia": 0, "horas": 8})
+                                        st.session_state[f"{key_base}_otros"] = otros_equipos
+                                        st.rerun()
+
+                                    for i, equipo in enumerate(otros_equipos):
+                                        with st.expander(f"⚙️ Equipo {i+1} — {equipo.get('nombre','(sin nombre)')}", expanded=True):
+                                            cols = st.columns([3, 1])
+                                            with cols[0]:
+                                                nombre = st.text_input("Nombre del equipo:", value=equipo["nombre"], key=f"{key_base}_nombre_{i}")
+                                            with cols[1]:
+                                                eliminar = st.button("🗑️ Eliminar", key=f"{key_base}_del_{i}")
+
+                                            num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num_{i}")
+                                            potencia = st.number_input("Potencia (W):", min_value=0, max_value=50000, value=equipo.get("potencia", 100), key=f"{key_base}_pot_{i}")
+                                            horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=float(equipo.get("horas", 8.0)), step=1.0, key=f"{key_base}_hr_{i}")
+
+                                            otros_equipos[i] = {"nombre": nombre, "potencia": potencia, "horas": horas}
+                                            st.session_state[f"{key_base}_otros"] = otros_equipos
+
+                                            kwh_mes = round(potencia / 1000 * horas * factor_mensual, 2)
+                                            nuevo_registro = {"origen": "Energía eléctrica", "piso": f"Piso {piso}", "uso": uso, "subuso": nombre or sub, "valor": kwh_mes}
+                                            if nuevo_registro not in st.session_state["sankey_data"]:
+                                                st.session_state["sankey_data"].append(nuevo_registro)
+
+                                            if eliminar:
+                                                otros_equipos.pop(i)
+                                                st.session_state[f"{key_base}_otros"] = otros_equipos
+                                                st.rerun()
+
+                                # --- Equipos normales ---
+                                else:
+                                    num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    if sub in equipos_continuos:
+                                        horas = 24
+                                        st.info("⏱️ Este equipo es de uso continuo.")
+                                    else:
+                                        horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
+
+                                    potencia = potencias_nominales.get(sub)
+                                    if potencia is None:
+                                        potencia = st.number_input(f"Potencia (W) ({sub})", 0, 50000, 200, key=f"{key_base}_pot")
+
+                                    kwh_mes = calcular_kwh_mes(potencia_w=potencia, num_equipos=num_equipos, horas=horas, factor_mensual=factor_mensual, continuo=(sub in equipos_continuos))
+                                    nuevo_registro = {"origen": "Energía eléctrica", "piso": f"Piso {piso}", "uso": uso, "subuso": sub, "valor": kwh_mes}
+                                    if nuevo_registro not in st.session_state["sankey_data"]:
+                                        st.session_state["sankey_data"].append(nuevo_registro)
+
+        st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
 # ------------------------
 # Evaluación de consumo contra la tarifa
 # ------------------------
 # Obtener el total residencial calculado
-#sankey_data = st.session_state.get("sankey_data", [])
+sankey_data = st.session_state.get("sankey_data", [])
     total_residencial = sum(item["valor"] for item in sankey_data if item["uso"] in usos_residenciales)
 
     limite = limites_tarifa[tarifa_sel]
@@ -1090,28 +1370,6 @@ with tab_residencial:
     else:
         st.success("✅ Tu consumo está dentro del rango seguro para tu tarifa.")
 # ------------------------
-# Botón general para limpiar todos los datos
-# ------------------------
-#if st.button("🗑️ Limpiar todos los datos"):
-    # 1️⃣ Limpiar todos los usos seleccionados
-#    for key in list(st.session_state.keys()):
-#        if "usos" in key:
-#            if isinstance(st.session_state[key], list):
-#                st.session_state[key] = [] 
-#            else:
-#                del st.session_state[key]
-
-        # 2️⃣ Limpiar checkboxes de equipos/subusos
-#        if key.startswith(("of_", "res_", "fu_", "otr_", "sit_", "ele_", "air_")):
-#            del st.session_state[key]
-
-    # 3️⃣ Limpiar listas globales
-#    st.session_state["subusos_seleccionados"] = []
-#    st.session_state["sankey_data"] = []
-
-    # 4️⃣ Forzar refresco total de la interfaz
-#    st.rerun()
-# ------------------------
 # Pestaña Consejos (dinámica)
 # ------------------------
 with tab_consejos:
@@ -1125,8 +1383,12 @@ with tab_consejos:
             if isinstance(valor, list):  # evita errores si es bool o None
                 usos.extend(valor)
 
+    # Eliminar duplicados
+    usos = list(set(usos))  # <-- Aquí eliminamos repeticiones
+
     # Reunir los equipos seleccionados globalmente
     equipos = st.session_state.get("subusos_seleccionados", [])
+    equipos = list(set(equipos))  # también eliminamos duplicados si los hubiera
 
     if not usos and not equipos:
         st.info("Selecciona primero los servicios o equipos en la pestaña anterior para ver los consejos.")
@@ -1164,19 +1426,33 @@ with tab_consejos:
             if valor:  # solo agregamos si hay datos
                 nombre_equipo = key.split("_", 2)[-1]  # extrae el nombre del subuso
                 subusos_activos.append(nombre_equipo)
+    st.session_state["subusos_seleccionados"] = list(set(subusos_activos))  # <-- eliminar duplicados aquí también
+
+    # ------------------------
+    # Limpiar subusos no seleccionados
+    # ------------------------
+    subusos_activos = []
+    for key in st.session_state.keys():
+        if key.startswith(("of_", "res_", "fu_")):
+            valor = st.session_state.get(key)
+            if valor:  # solo agregamos si hay datos
+                nombre_equipo = key.split("_", 2)[-1]  # extrae el nombre del subuso
+                subusos_activos.append(nombre_equipo)
     st.session_state["subusos_seleccionados"] = subusos_activos
 
 # ------------------------
 # Resultados: Tabla resumen y Sankey (barra lateral con botones)
 # ------------------------
 st.sidebar.markdown("---")
-st.sidebar.header("Resultados y exportación")
+st.sidebar.header("Resultados:")
 
 # Inicializar flags si no existen
 if "mostrar_tabla" not in st.session_state:
     st.session_state["mostrar_tabla"] = False
 if "mostrar_sankey" not in st.session_state:
     st.session_state["mostrar_sankey"] = False
+if "mostrar_pareto" not in st.session_state:
+    st.session_state["mostrar_pareto"] = False
 
 # ------------------------
 # Botones para alternar tabla y Sankey
@@ -1187,18 +1463,159 @@ if st.sidebar.button("📋 Mostrar / Ocultar tabla resumen"):
 if st.sidebar.button("📊 Mostrar / Ocultar Sankey"):
     st.session_state["mostrar_sankey"] = not st.session_state["mostrar_sankey"]
 
+if st.sidebar.button("📊 Mostrar / Ocultar Pareto"):
+    st.session_state["mostrar_pareto"] = not st.session_state["mostrar_pareto"]
+
+st.sidebar.divider()
+
+if st.sidebar.button("📄 Generar reporte de resultados"):
+
+    sankey_data = st.session_state.get("sankey_data", [])
+
+    # =========================
+    # VALIDACIÓN
+    # =========================
+    if not sankey_data:
+        st.sidebar.warning("⚠️ No hay datos suficientes para generar el reporte.")
+        st.stop()
+
+    # =========================
+    # DATAFRAME BASE
+    # =========================
+    df = pd.DataFrame(sankey_data)
+
+    consumo_total = df["valor"].sum()
+
+    # =========================
+    # DETECTAR MODO
+    # =========================
+    tiene_pisos = "piso" in df.columns and df["piso"].notna().any()
+
+    # =========================
+    # SELECCIÓN DE PLANTILLA
+    # =========================
+    if tiene_pisos:
+        plantilla = "templates/reporte_base_piso.docx"
+        nombre_reporte = "Reporte_Diagnostico_Energetico_Por_Piso.docx"
+    else:
+        plantilla = "templates/reporte_base_global.docx"
+        nombre_reporte = "Reporte_Diagnostico_Energetico_Global.docx"
+
+    # =========================
+    # ANÁLISIS GLOBAL (siempre)
+    # =========================
+    servicio_global_mayor = (
+        df.groupby("uso")["valor"].sum().idxmax()
+    )
+
+    consumo_servicio_global_mayor = (
+        df[df["uso"] == servicio_global_mayor]["valor"].sum()
+    )
+
+    equipo_global_mayor = (
+        df.groupby("subuso")["valor"].sum().idxmax()
+    )
+
+    consumo_equipo_global_mayor = (
+        df[df["subuso"] == equipo_global_mayor]["valor"].sum()
+    )
+
+    servicio_global_segundo = (
+        df.groupby("uso")["valor"].sum()
+        .sort_values(ascending=False)
+        .index[1] if df["uso"].nunique() > 1 else "No aplica"
+    )
+
+    equipo_global_segundo = (
+        df.groupby("subuso")["valor"].sum()
+        .sort_values(ascending=False)
+        .index[1] if df["subuso"].nunique() > 1 else "No aplica"
+    )
+
+    # =========================
+    # ANÁLISIS POR PISO (solo si aplica)
+    # =========================
+    if tiene_pisos:
+        consumo_por_piso = df.groupby("piso")["valor"].sum().sort_values(ascending=False)
+
+        piso_mayor = consumo_por_piso.index[0]
+        consumo_piso_mayor = consumo_por_piso.iloc[0]
+
+        piso_segundo = consumo_por_piso.index[1] if len(consumo_por_piso) > 1 else "No aplica"
+        consumo_piso_segundo = consumo_por_piso.iloc[1] if len(consumo_por_piso) > 1 else "No aplica"
+
+        df_piso = df[df["piso"] == piso_mayor]
+
+        servicio_piso_mayor = df_piso.groupby("uso")["valor"].sum().idxmax()
+        consumo_servicio_piso_mayor = df_piso[df_piso["uso"] == servicio_piso_mayor]["valor"].sum()
+
+        equipo_piso_mayor = df_piso.groupby("subuso")["valor"].sum().idxmax()
+        consumo_equipo_piso_mayor = df_piso[df_piso["subuso"] == equipo_piso_mayor]["valor"].sum()
+    else:
+        piso_mayor = consumo_piso_mayor = "No aplica"
+        piso_segundo = consumo_piso_segundo = "No aplica"
+        servicio_piso_mayor = consumo_servicio_piso_mayor = "No aplica"
+        equipo_piso_mayor = consumo_equipo_piso_mayor = "No aplica"
+
+    # =========================
+    # DATOS PARA WORD
+    # =========================
+    datos_reporte = {
+        "INMUEBLE": st.session_state.get("nombre_inmueble", "No especificado"),
+        "TIPO_INMUEBLE": st.session_state.get("tipo_inmueble", "No especificado"),
+        "DEPENDENCIA": st.session_state.get("dependencia", "No especificado"),
+        "FECHA_REPORTE": date.today().strftime("%d/%m/%Y"),
+        "CONSUMO_TOTAL_KWH": f"{consumo_total:,.0f} kWh/mes",
+
+        # Piso
+        "PISO_MAYOR_CONSUMO": piso_mayor,
+        "CONSUMO_PISO_MAYOR_CONSUMO_KWH": f"{consumo_piso_mayor:,.0f} kWh/mes" if piso_mayor != "No aplica" else "No aplica",
+        "PISO_SEGUNDO_CONSUMO": piso_segundo,
+        "CONSUMO_PISO_SEGUNDO_KWH": f"{consumo_piso_segundo:,.0f} kWh/mes" if piso_segundo != "No aplica" else "No aplica",
+
+        "SERVICIO_PISO_MAYOR": servicio_piso_mayor,
+        "CONSUMO_SERVICIO_PISO_MAYOR": f"{consumo_servicio_piso_mayor:,.0f} kWh/mes" if servicio_piso_mayor != "No aplica" else "No aplica",
+
+        "EQUIPO_PISO_MAYOR": equipo_piso_mayor,
+        "CONSUMO_EQUIPO_PISO_MAYOR": f"{consumo_equipo_piso_mayor:,.0f} kWh/mes" if equipo_piso_mayor != "No aplica" else "No aplica",
+
+        # Global
+        "SERVICIO_GLOBAL_MAYOR": servicio_global_mayor,
+        "CONSUMO_SERVICIO_GLOBAL_MAYOR": f"{consumo_servicio_global_mayor:,.0f} kWh/mes",
+        "EQUIPO_GLOBAL_MAYOR": equipo_global_mayor,
+        "CONSUMO_EQUIPO_GLOBAL_MAYOR": f"{consumo_equipo_global_mayor:,.0f} kWh/mes",
+
+        "SERVICIO_GLOBAL_SEGUNDO": servicio_global_segundo,
+        "EQUIPO_GLOBAL_SEGUNDO": equipo_global_segundo,
+    }
+
+    # =========================
+    # GENERAR WORD
+    # =========================
+    generar_reporte_word(datos_reporte, plantilla, "reporte_resultados.docx")
+
+    st.sidebar.success("Reporte generado correctamente")
+
+    with open("reporte_resultados.docx", "rb") as f:
+        st.sidebar.download_button(
+            "⬇️ Descargar reporte",
+            data=f,
+            file_name=nombre_reporte,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
 # ------------------------
 # Mostrar tabla resumen
 # ------------------------
 if st.session_state["mostrar_tabla"]:
     sankey_data = st.session_state.get("sankey_data", [])
     if not sankey_data:
-        st.sidebar.info("⚠️ No hay datos calculados aún. Ingresa subusos y calcula consumos en las pestañas.")
+        st.sidebar.info("⚠️ No hay datos para generar Tabla.")
     else:
         df_sankey = pd.DataFrame(sankey_data)
         df_tabla = df_sankey.rename(columns={
-            "uso": "Uso",
-            "subuso": "Subuso",
+            "uso": "Servicio",
+            "subuso": "Equipo",
             "valor": "Consumo (kWh/mes)"
         })
 
@@ -1208,8 +1625,8 @@ if st.session_state["mostrar_tabla"]:
 
         # ✅ Agregar fila final del total
         total_row = pd.DataFrame({
-            "Uso": ["TOTAL"],
-            "Subuso": [""],
+            "Servicio": ["TOTAL"],
+            "Equipo": [""],
             "Consumo (kWh/mes)": [round(total, 2)],
             "% del consumo": [100.00]
         })
@@ -1232,7 +1649,7 @@ if st.session_state["mostrar_tabla"]:
         )
 
 # ------------------------
-# Mostrar Sankey
+# Mostrar Sankey (compatible con Global y Por piso)
 # ------------------------
 if st.session_state["mostrar_sankey"]:
     sankey_data = st.session_state.get("sankey_data", [])
@@ -1241,35 +1658,118 @@ if st.session_state["mostrar_sankey"]:
     else:
         df = pd.DataFrame(sankey_data)
 
-        # Convertir todo a str para evitar errores de tipo
-        df["uso"] = df["uso"].astype(str)
-        df["subuso"] = df["subuso"].astype(str)
+        # Verifica si hay pisos
+        tiene_pisos = "piso" in df.columns and df["piso"].notna().any()
 
-        # Preparar labels
-        labels = ["Energía eléctrica"] + sorted(df["uso"].unique().tolist()) + sorted(df["subuso"].unique().tolist())
-        label_index = {l: i for i, l in enumerate(labels)}
-        sources, targets, values = [], [], []
+        if tiene_pisos:
+            labels = ["Energía eléctrica"] \
+                     + sorted(df["piso"].unique().tolist()) \
+                     + sorted(df["uso"].unique().tolist()) \
+                     + sorted(df["subuso"].unique().tolist())
 
-        for d in sankey_data:
-            # Energía eléctrica -> uso
-            sources.append(label_index["Energía eléctrica"])
-            targets.append(label_index[d["uso"]])
-            values.append(d["valor"])
-            # uso -> subuso
-            sources.append(label_index[d["uso"]])
-            targets.append(label_index[d["subuso"]])
-            values.append(d["valor"])
+            label_index = {l: i for i, l in enumerate(labels)}
+            sources, targets, values = [], [], []
+
+            for d in sankey_data:
+                piso = d["piso"]
+                uso = d["uso"]
+                subuso = d["subuso"]
+
+                # Energía → Piso
+                sources.append(label_index["Energía eléctrica"])
+                targets.append(label_index[piso])
+                values.append(d["valor"])
+
+                # Piso → Uso
+                sources.append(label_index[piso])
+                targets.append(label_index[uso])
+                values.append(d["valor"])
+
+                # Uso → Subuso
+                sources.append(label_index[uso])
+                targets.append(label_index[subuso])
+                values.append(d["valor"])
+
+        else:
+            # Modo global (como ya lo tienes)
+            labels = ["Energía eléctrica"] + sorted(df["uso"].unique().tolist()) + sorted(df["subuso"].unique().tolist())
+            label_index = {l: i for i, l in enumerate(labels)}
+            sources, targets, values = [], [], []
+            for d in sankey_data:
+                sources.append(label_index["Energía eléctrica"])
+                targets.append(label_index[d["uso"]])
+                values.append(d["valor"])
+                sources.append(label_index[d["uso"]])
+                targets.append(label_index[d["subuso"]])
+                values.append(d["valor"])
 
         fig = go.Figure(data=[go.Sankey(
             node=dict(label=labels, pad=15, thickness=20),
             link=dict(source=sources, target=targets, value=values)
         )])
-        fig.update_layout(
-            title_text="🔌 Diagrama Sankey del consumo (kWh/mes) — datos agregados",
-            font_size=12,
-            height=600
-        )
+        fig.update_layout(title_text="🔌 Diagrama Sankey del consumo (kWh/mes)", font_size=12, height=600)
         st.plotly_chart(fig, use_container_width=True)
+        
+# ------------------------
+# Mostrar gráfico de Pareto
+# ------------------------
+if st.session_state["mostrar_pareto"]:
+    sankey_data = st.session_state.get("sankey_data", [])
+    
+    if not sankey_data:
+        st.sidebar.info("⚠️ No hay datos para generar Gráfico.")
+    else:
+        df_sankey = pd.DataFrame(sankey_data)
+
+        # Agrupar por subuso/equipo
+        df_pareto = df_sankey.groupby("subuso")["valor"].sum().reset_index()
+        df_pareto = df_pareto.rename(columns={"subuso": "Equipo", "valor": "Consumo (kWh/mes)"})
+
+        # Ordenar de mayor a menor consumo
+        df_pareto = df_pareto.sort_values(by="Consumo (kWh/mes)", ascending=False)
+        df_pareto["% Acumulado"] = df_pareto["Consumo (kWh/mes)"].cumsum() / df_pareto["Consumo (kWh/mes)"].sum() * 100
+
+        # Crear gráfico de Pareto usando Plotly
+        fig_pareto = go.Figure()
+
+        # Barras: Consumo de cada equipo
+        fig_pareto.add_trace(go.Bar(
+            x=df_pareto["Equipo"],
+            y=df_pareto["Consumo (kWh/mes)"],
+            name="Consumo (kWh/mes)",
+            marker_color="steelblue"
+        ))
+
+        # Línea: % acumulado
+        fig_pareto.add_trace(go.Scatter(
+            x=df_pareto["Equipo"],
+            y=df_pareto["% Acumulado"],
+            name="% Acumulado",
+            yaxis="y2",
+            mode="lines+markers",
+            marker_color="crimson"
+        ))
+
+        # Configurar doble eje Y
+        fig_pareto.update_layout(
+            title="📊 Gráfico de Pareto de consumo por equipo",
+            xaxis_title="Equipo",
+            yaxis_title="Consumo (kWh/mes)",
+            yaxis2=dict(
+                title="% Acumulado",
+                overlaying="y",
+                side="right",
+                range=[0, 110]
+            ),
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+        )
+
+        st.plotly_chart(fig_pareto, use_container_width=True)
+# ------------------------
+# Footer
+# ------------------------
+#st.markdown("---")
+#st.markdown("App diseñada para calcular consumos eléctricos por servicio o equipo, introduce tus datos y usa la pestaña **Consejos** para ver recomendaciones enfocadas. Ajusta `dias de operación por semana` en la barra lateral para cambiar el factor mensual.")
 
 # ------------------------
 # Footer
@@ -1277,13 +1777,19 @@ if st.session_state["mostrar_sankey"]:
 #st.markdown("---")
 #st.markdown("App diseñada para calcular consumos eléctricos por servicio o equipo, introduce tus datos y usa la pestaña **Consejos** para ver recomendaciones enfocadas. Ajusta `dias de operación por semana` en la barra lateral para cambiar el factor mensual.")
 
-MANUALCONSEJOS = "https://www.gob.mx/cms/uploads/article/main_image/143207/consejos_hogar.jpg"
-LINKMC = "https://www.conuee.gob.mx/transparencia/nuevaestrategia/docs/CONSEJOS_EE_HOGAR_2025.pdf"
+#MANUALCONSEJOS = "https://www.gob.mx/cms/uploads/article/main_image/143207/consejos_hogar.jpg"
+#MANUALERRORES = "templates/Correccio_n_de_malas_pra_cticas_en_oficinas_page-0001.jpg" 
+#LINKME = "https://www.gob.mx/cms/uploads/attachment/file/1038494/Correccio_n_de_malas_pra_cticas_en_oficinas.pdf"
+#LINKMC = "https://www.conuee.gob.mx/transparencia/nuevaestrategia/docs/CONSEJOS_EE_HOGAR_2025.pdf"
 
-with st.sidebar:
-    st.markdown(
-        f'<a href="{LINKMC}" target="_blank">'
-        f'<img src="{MANUALCONSEJOS}" alt="CONUEE" style="width:100%;">'
-        '</a>',
-        unsafe_allow_html=True
-    )
+#with st.sidebar:
+#    st.markdown(
+#        f'<a href="{LINKMC}" target="_blank">'
+#        f'<img src="{MANUALCONSEJOS}" alt="CONUEE" style="width:100%;">'
+#        '</a>'
+#        )
+#    st.image("templates/Correccio_n_de_malas_pra_cticas_en_oficinas_page-0001.jpg")
+#    st.markdown(
+#        f'<a href="{LINKME}" target="_blank">📄 Corrección de malas prácticas</a>',
+#        unsafe_allow_html=True
+#    )
