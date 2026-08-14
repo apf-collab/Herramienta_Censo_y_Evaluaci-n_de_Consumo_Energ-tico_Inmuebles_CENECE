@@ -1493,7 +1493,7 @@ if st.session_state["mostrar_sankey"]:
         
         fig.update_layout(
             title_text="🔌 Diagrama Sankey del consumo (kWh/mes)",
-            font=dict(color="black", size=13, family="Arial"),  # 🎨 FUENTE NEGRA, NÍTIDA Y SIN SOMBRAS
+            font=dict(color="blue", size=13, family="Arial"),  # 🎨 FUENTE NEGRA, NÍTIDA Y SIN SOMBRAS
             height=600
         )
 
