@@ -1549,3 +1549,19 @@ if st.session_state["mostrar_pareto"]:
         )
 
         st.plotly_chart(fig_pareto, use_container_width=True)
+# ------------------------
+# Footer
+# ------------------------
+#st.markdown("---")
+#st.markdown("App diseñada para calcular consumos eléctricos por servicio o equipo, introduce tus datos y usa la pestaña **Consejos** para ver recomendaciones enfocadas. Ajusta `dias de operación por semana` en la barra lateral para cambiar el factor mensual.")
+
+MANUALCONSEJOS = "https://x.com/ConueeInt/status/2084698682956390858/photo/1"
+LINKMC = "https://www.gob.mx/cms/uploads/attachment/file/1038494/Correccio_n_de_malas_pra_cticas_en_oficinas.pdf"
+
+with st.sidebar:
+    st.markdown(
+        f'<a href="{LINKMC}" target="_blank">'
+        f'<img src="{MANUALCONSEJOS}" alt="CONUEE" style="width:100%;">'
+        '</a>',
+        unsafe_allow_html=True
+    )
