@@ -1555,7 +1555,7 @@ if st.session_state["mostrar_pareto"]:
 #st.markdown("---")
 #st.markdown("App diseñada para calcular consumos eléctricos por servicio o equipo, introduce tus datos y usa la pestaña **Consejos** para ver recomendaciones enfocadas. Ajusta `dias de operación por semana` en la barra lateral para cambiar el factor mensual.")
 
-MANUALCONSEJOS = "https://x.com/ConueeInt/status/2084698682956390858/photo/1"
+MANUALCONSEJOS = "https://pbs.twimg.com/media/HO5WU0QWAAA6b4W?format=png&name=small"
 LINKMC = "https://www.gob.mx/cms/uploads/attachment/file/1038494/Correccio_n_de_malas_pra_cticas_en_oficinas.pdf"
 
 with st.sidebar:
