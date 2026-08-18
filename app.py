@@ -678,6 +678,7 @@ with tab_oficina:
                             if marcado:
                                 agregar_subuso_seleccionado(sub)
 
+                                # 1. Acondicionamiento de aire
                                 if uso == "Acondicionamiento de aire" and sub in cop_data:
                                     num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
                                     antig = st.selectbox("Antigüedad:", ["nuevo", "5-10 años", "+10 años"], key=f"{key_base}_ant")
@@ -686,13 +687,18 @@ with tab_oficina:
                                     COP = cop_data[sub][antig]
                                     pot_w = pot_w_por_tr(toneladas, COP)
                                     kwh_mes = kwh_mes_desde_potencia(pot_w, num_eq, horas, factor_mensual)
-                                    st.session_state["sankey_data"].append({
+                                    
+                                    nuevo_registro = {
                                         "origen": "Energía eléctrica",
                                         "piso": f"Piso {piso}",
                                         "uso": uso,
                                         "subuso": sub,
                                         "valor": kwh_mes
-                                    })
+                                    }
+                                    if nuevo_registro not in st.session_state["sankey_data"]:
+                                        st.session_state["sankey_data"].append(nuevo_registro)
+
+                                # 2. Equipos de Fuerza (Cálculo basado en HP y Eficiencia)
                                 elif uso == "Equipos de fuerza":
                                     num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
                                     hp = st.number_input(f"Potencia en Caballos de Fuerza (HP) ({sub}):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_hp")
@@ -717,6 +723,11 @@ with tab_oficina:
                                         "subuso": sub,
                                         "valor": kwh_mes
                                     }
+
+                                    if nuevo_registro not in st.session_state["sankey_data"]:
+                                        st.session_state["sankey_data"].append(nuevo_registro)
+
+                                # 3. Otros casos o usos generales
                                 else:
                                     num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
 
@@ -750,7 +761,6 @@ with tab_oficina:
 
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
-
         #st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
 # ------------------------
