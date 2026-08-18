@@ -693,7 +693,30 @@ with tab_oficina:
                                         "subuso": sub,
                                         "valor": kwh_mes
                                     })
+                                elif uso == "Equipos de fuerza":
+                                    num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                                    hp = st.number_input(f"Potencia en Caballos de Fuerza (HP) ({sub}):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_hp")
+                                    horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
+                                    # Cálculo de potencia eléctrica equivalente en Vatios (W)
+                                    eficiencia = 0.75 if sub == "Hidroneumático" else 0.85
+                                    potencia_w = (hp * 746) / eficiencia
+
+                                    kwh_mes = calcular_kwh_mes(
+                                        potencia_w=potencia_w,
+                                        num_equipos=num_equipos,
+                                        horas=horas,
+                                        factor_mensual=factor_mensual,
+                                        continuo=(sub in equipos_continuos)
+                                    )
+
+                                    nuevo_registro = {
+                                        "origen": "Energía eléctrica",
+                                        "piso": f"Piso {piso}",
+                                        "uso": uso,
+                                        "subuso": sub,
+                                        "valor": kwh_mes
+                                    }
                                 else:
                                     num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
 
