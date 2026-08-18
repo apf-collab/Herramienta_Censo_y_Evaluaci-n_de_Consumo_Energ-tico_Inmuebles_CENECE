@@ -117,7 +117,7 @@ subusos = {
                           "Horno eléctrico", "Purificador de aire", "Plancha", "Licuadora", "Ventilador de techo", "Ventilador individual",
                           "Lavadora 7-15 kg", "Lavadora más de 15 kg", "Secadora eléctrica", "Lavavajillas", "Otro"],
     "Equipos de oficina": ["Fotocopiadora/ Impresora", "Escáner", "Multiusos", "Cañones y proyectores", "Otro"],
-    "Equipos de fuerza": ["Bomba de agua", "Compresor", "Elevador", "Escaleras eléctricas", "Otro"],
+    "Equipos de fuerza": ["Hidroneumático", "Compresor", "Elevador", "Escaleras eléctricas", "Otro"],
     "Equipos de cómputo": ["Computadora de escritorio", "Laptop", "Otro"],
     "Site de computo": ["Servidores"],
     "Telecomunicaciónes": ["Celular / Smartphone","Teléfono analógico","Teléfono con pantalla", "Teléfono inalámbrico", "Routers Wi-Fi", "Otro"],
@@ -566,7 +566,8 @@ with tab_oficina:
                             horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
                             # Cálculo de la potencia eléctrica equivalente en Vatios (W)
-                            potencia_w = (hp * 746) / 0.9
+                            eficiencia = 0.75 if sub == "Hidroneumático" else 0.85
+                            potencia_w = (hp * 746) / eficiencia
                             st.caption(f"⚡ Potencia eléctrica calculada: **{round(potencia_w, 2)} W**")
 
                             kwh_mes = calcular_kwh_mes(
