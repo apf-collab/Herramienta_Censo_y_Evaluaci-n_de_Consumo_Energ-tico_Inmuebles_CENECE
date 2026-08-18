@@ -112,7 +112,7 @@ subusos = {
     "Acondicionamiento de aire": list(cop_data.keys()) + ["Otro"],
     "Acondicionamiento de aire residencial": list(cop__data.keys()) + ["Otro"],
     "Electrodomésticos": ["Refrigerador", "Cafetera", "Microondas", "Enfriador/calentador de agua", "Parrilla o estufa eléctrica", "Televisor", "Maquina expendedora (Snacks)",
-                          "Maquina expendedora (Bebidas frias)", "Horno eléctrico", "Purificador de aire", "Ventilador de techo", "Ventilador individual", "Ventilador de techo", "Otro"],
+                          "Maquina expendedora (Bebidas frias)", "Horno eléctrico", "Purificador de aire", "Ventilador de techo", "Ventilador individual", "Otro"],
     "Electrodomésticos residenciales": ["Refrigerador", "Cafetera", "Microondas","Enfriador/calentador de agua", "Parrilla o estufa eléctrica",
                           "Horno eléctrico", "Purificador de aire", "Plancha", "Licuadora", "Ventilador de techo", "Ventilador individual",
                           "Lavadora 7-15 kg", "Lavadora más de 15 kg", "Secadora eléctrica", "Lavavajillas", "Otro"],
@@ -539,7 +539,7 @@ with tab_oficina:
         for uso in usos_seleccionados:
             st.subheader(uso)
             if uso in subusos:
-                for idx, sub in enumerate(subusos[uso]):
+                for sub in subusos[uso]:
                     key_base = f"of_{uso}_{sub}"
                     marcado = st.checkbox(f"{sub}", key=key_base)
                     if marcado:
