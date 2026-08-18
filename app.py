@@ -560,7 +560,31 @@ with tab_oficina:
                                 "subuso": sub,
                                 "valor": kwh_mes
                             })
+                        elif uso == "Equipos de fuerza":
+                            num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
+                            hp = st.number_input(f"Potencia en Caballos de Fuerza (HP) ({sub}):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_hp")
+                            horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
+                            # Cálculo de la potencia eléctrica equivalente en Vatios (W)
+                            potencia_w = (hp * 746) / 0.9
+                            st.caption(f"⚡ Potencia eléctrica calculada: **{round(potencia_w, 2)} W**")
+
+                            kwh_mes = calcular_kwh_mes(
+                                potencia_w=potencia_w,
+                                num_equipos=num_equipos,
+                                horas=horas,
+                                factor_mensual=factor_mensual,
+                                continuo=(sub in equipos_continuos)
+                            )
+                            nuevo_registro = {
+                                "origen": "Energía eléctrica",
+                                "uso": uso,
+                                "subuso": sub,
+                                "valor": kwh_mes
+                            }
+                            if nuevo_registro not in st.session_state["sankey_data"]:
+                                st.session_state["sankey_data"].append(nuevo_registro)
+                                
                         elif sub in ["Otros", "Otro"]:
                             otros_equipos = st.session_state.get(f"{key_base}_otros", [])
                             agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
