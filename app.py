@@ -407,7 +407,7 @@ consejos = {
         "Evita el sobredimensionamiento.",
         "Realiza mantenimiento periódico."
     ],
-    "Bomba de agua": [
+    "Hidroneumático": [
         "Evita operar con válvulas parcialmente cerradas.",
         "Verifica que el sistema no presente fugas.",
         "Evita arranques y paros frecuentes, aumentan el consumo y el desgaste del motor.",
