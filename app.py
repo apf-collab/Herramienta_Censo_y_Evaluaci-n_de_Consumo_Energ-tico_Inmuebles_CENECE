@@ -523,7 +523,7 @@ with st.sidebar:
     )
 
     dias_semana = st.slider("Días de operación por semana:", 1, 7, 5)
-    factor_mensual = round(dias_semana * 4.287, 3)
+    factor_mensual = round(dias_semana * 4.2857, 3)
 
 # ------------------------
 # Pestaña Oficina
