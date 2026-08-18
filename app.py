@@ -539,7 +539,7 @@ with tab_oficina:
         for uso in usos_seleccionados:
             st.subheader(uso)
             if uso in subusos:
-                for sub in subusos[uso]:
+                for idx, sub in enumerate(subusos[uso]):
                     key_base = f"of_{uso}_{sub}"
                     marcado = st.checkbox(f"{sub}", key=key_base)
                     if marcado:
