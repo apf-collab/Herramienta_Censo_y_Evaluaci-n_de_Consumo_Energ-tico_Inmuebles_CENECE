@@ -1700,11 +1700,13 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
     if tiene_pisos:
-        plantilla = os.path.join(BASE_DIR, "templates", "Plantilla_Informe_Por_piso_2.docx")
+        nombre_plantilla = "Plantilla_Informe_Por_piso.docx"
         nombre_pdf = "Reporte_Diagnostico_Energetico_Por_Piso.pdf"
     else:
-        plantilla = os.path.join(BASE_DIR, "templates", "Plantilla_Informe_Global_2.docx")
+        nombre_plantilla = "Plantilla_Informe_Global.docx"
         nombre_pdf = "Reporte_Diagnostico_Energetico_Global.pdf"
+
+    plantilla = os.path.join(BASE_DIR, "templates", nombre_plantilla)
 
     # --- CÁLCULOS GLOBALES Y DE SEGUNDO LUGAR ---
     usos_ordenados = df.groupby("uso")["valor"].sum().sort_values(ascending=False)
