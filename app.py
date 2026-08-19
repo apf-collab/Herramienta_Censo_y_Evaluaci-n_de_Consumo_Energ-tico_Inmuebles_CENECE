@@ -1223,15 +1223,9 @@ with tab_residencial:
     limite_tarifa = limites_tarifa[tarifa_sel]
     st.markdown("Selecciona los equipos y servicios residenciales que quieras calcular.")
 
-    # 1. Se agrega "Equipos de fuerza" a la lista de opciones
-    usos_residenciales = [
-        "Iluminación", "Acondicionamiento de aire residencial", "Electrodomésticos residenciales", 
-        "Equipos de cómputo", "Entretenimiento", "Equipos sanitarios", "Equipos de fuerza", "Otros"
-    ]
+    usos_residenciales = ["Iluminación", "Acondicionamiento de aire residencial", "Electrodomésticos residenciales", 
+                          "Equipos de cómputo", "Entretenimiento", "Equipos sanitarios", "Otros"]
 
-    # ----------------------------------------------------
-    # MODO GLOBAL
-    # ----------------------------------------------------
     if modo_calculo == "Global (todo el edificio)":
         usos_sel_res = st.multiselect("Selecciona los usos residenciales:", usos_residenciales, key="res_usos_global")
 
@@ -1261,14 +1255,15 @@ with tab_residencial:
                             pot_w = pot_w_por_tr(toneladas, COP)
                             kwh_mes = kwh_mes_desde_potencia(pot_w, num_equipos, horas, factor_mensual)
                             st.session_state["sankey_data"].append({"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes})
-
                         elif uso == "Equipos de fuerza":
                             num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
                             hp = st.number_input(f"Potencia en Caballos de Fuerza (HP) ({sub}):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_hp")
                             horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
-                            eficiencia = 0.75 if sub in ["Hidroneumático", "Bomba de agua"] else 0.85
+                            # Cálculo de la potencia eléctrica equivalente en Vatios (W)
+                            eficiencia = 0.75 if sub == "Hidroneumático" else 0.85
                             potencia_w = (hp * 746) / eficiencia
+#                            st.caption(f"⚡ Potencia eléctrica calculada: **{round(potencia_w, 2)} W**")
 
                             kwh_mes = calcular_kwh_mes(
                                 potencia_w=potencia_w,
@@ -1335,10 +1330,7 @@ with tab_residencial:
                             nuevo_registro = {"origen": "Energía eléctrica", "uso": uso, "subuso": sub, "valor": kwh_mes}
                             if nuevo_registro not in st.session_state["sankey_data"]:
                                 st.session_state["sankey_data"].append(nuevo_registro)
-
-    # ----------------------------------------------------
-    # MODO POR PISO
-    # ----------------------------------------------------
+                                
     elif modo_calculo == "Por piso":
         st.subheader("🏘️ Cálculo de consumo por piso — Residencial")
         num_pisos = st.number_input("Número de pisos del inmueble:", min_value=1, step=1, value=1, key="res_pisos")
@@ -1373,32 +1365,6 @@ with tab_residencial:
                                     pot_w = pot_w_por_tr(toneladas, COP)
                                     kwh_mes = kwh_mes_desde_potencia(pot_w, num_equipos, horas, factor_mensual)
                                     st.session_state["sankey_data"].append({"origen": "Energía eléctrica", "piso": f"Piso {piso}", "uso": uso, "subuso": sub, "valor": kwh_mes})
-
-                                # 2. Bloque agregado para Equipos de fuerza en modo "Por piso"
-                                elif uso == "Equipos de fuerza":
-                                    num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
-                                    hp = st.number_input(f"Potencia en Caballos de Fuerza (HP) ({sub}):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_hp")
-                                    horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
-
-                                    eficiencia = 0.75 if sub in ["Hidroneumático", "Bomba de agua"] else 0.85
-                                    potencia_w = (hp * 746) / eficiencia
-
-                                    kwh_mes = calcular_kwh_mes(
-                                        potencia_w=potencia_w,
-                                        num_equipos=num_equipos,
-                                        horas=horas,
-                                        factor_mensual=factor_mensual,
-                                        continuo=(sub in equipos_continuos)
-                                    )
-                                    nuevo_registro = {
-                                        "origen": "Energía eléctrica",
-                                        "piso": f"Piso {piso}",
-                                        "uso": uso,
-                                        "subuso": sub,
-                                        "valor": kwh_mes
-                                    }
-                                    if nuevo_registro not in st.session_state["sankey_data"]:
-                                        st.session_state["sankey_data"].append(nuevo_registro)
 
                                 elif sub in ["Otros", "Otro"]:
                                     otros_equipos = st.session_state.get(f"{key_base}_otros", [])
@@ -1449,6 +1415,7 @@ with tab_residencial:
                                     nuevo_registro = {"origen": "Energía eléctrica", "piso": f"Piso {piso}", "uso": uso, "subuso": sub, "valor": kwh_mes}
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
+                                        
         #st.success("✅ Cálculo completado por piso. Puedes ver el diagrama Sankey más abajo.")
 
     # ------------------------
