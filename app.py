@@ -12,38 +12,88 @@ import os
 import subprocess
 from datetime import date
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Inches, Pt
 from io import BytesIO
 
-def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, plantilla_path, salida_path):
+def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, consejos_servicios, consejos_equipos, plantilla_path, salida_path):
     doc = Document(plantilla_path)
 
-    # 1. Reemplazo de texto en párrafos
+    # 1. Reemplazo de texto general en párrafos
     for paragraph in doc.paragraphs:
         for key, value in datos.items():
+            if key in ["CONSEJOS_GENERALES_SERVICIO", "CONSEJOS_GENERALES_EQUIPO"]:
+                continue
             marcador = f"{{{{{key}}}}}"
             if marcador in paragraph.text:
                 paragraph.text = paragraph.text.replace(marcador, str(value))
 
-    # 2. Insertar Tabla Resumen
+    # 2. Insertar Consejos Generales por Servicio con párrafos individuales
+    for p in list(doc.paragraphs):
+        if "{{CONSEJOS_GENERALES_SERVICIO}}" in p.text:
+            p.text = p.text.replace("{{CONSEJOS_GENERALES_SERVICIO}}", "")
+            if consejos_servicios:
+                for servicio, tips in consejos_servicios.items():
+                    # Título de servicio
+                    p_head = p.insert_paragraph_before()
+                    p_head.paragraph_format.space_before = Pt(8)
+                    p_head.paragraph_format.space_after = Pt(3)
+                    run_head = p_head.add_run(f"📌 {servicio}:")
+                    run_head.bold = True
+                    run_head.font.size = Pt(11)
+                    
+                    # Viñetas de consejos
+                    for tip in tips:
+                        p_bullet = p.insert_paragraph_before()
+                        p_bullet.paragraph_format.left_indent = Inches(0.25)
+                        p_bullet.paragraph_format.space_after = Pt(2)
+                        p_bullet.paragraph_format.line_spacing = 1.15
+                        run_bullet = p_bullet.add_run(f"•  {tip}")
+                        run_bullet.font.size = Pt(10)
+            else:
+                p_none = p.insert_paragraph_before("Sin recomendaciones generales aplicables.")
+                p_none.paragraph_format.left_indent = Inches(0.2)
+
+    # 3. Insertar Consejos Específicos por Equipo con párrafos individuales
+    for p in list(doc.paragraphs):
+        if "{{CONSEJOS_GENERALES_EQUIPO}}" in p.text:
+            p.text = p.text.replace("{{CONSEJOS_GENERALES_EQUIPO}}", "")
+            if consejos_equipos:
+                for equipo, tips in consejos_equipos.items():
+                    # Título de equipo
+                    p_head = p.insert_paragraph_before()
+                    p_head.paragraph_format.space_before = Pt(8)
+                    p_head.paragraph_format.space_after = Pt(3)
+                    run_head = p_head.add_run(f"⚙️ {equipo}:")
+                    run_head.bold = True
+                    run_head.font.size = Pt(11)
+                    
+                    # Viñetas de consejos
+                    for tip in tips:
+                        p_bullet = p.insert_paragraph_before()
+                        p_bullet.paragraph_format.left_indent = Inches(0.25)
+                        p_bullet.paragraph_format.space_after = Pt(2)
+                        p_bullet.paragraph_format.line_spacing = 1.15
+                        run_bullet = p_bullet.add_run(f"•  {tip}")
+                        run_bullet.font.size = Pt(10)
+            else:
+                p_none = p.insert_paragraph_before("Sin recomendaciones específicas aplicables.")
+                p_none.paragraph_format.left_indent = Inches(0.2)
+
+    # 4. Insertar Tabla Resumen
     for p in doc.paragraphs:
         if "{{TABLA_RESUMEN}}" in p.text:
             p.text = p.text.replace("{{TABLA_RESUMEN}}", "")
             if df_resumen is not None and not df_resumen.empty:
                 tabla = doc.add_table(rows=1, cols=len(df_resumen.columns))
-                
-                # Intenta aplicar estilo con bordes, si no existe en la plantilla no detiene la ejecución
                 try:
                     tabla.style = 'Table Grid'
                 except Exception:
                     pass
                 
-                # Encabezados
                 hdr_cells = tabla.rows[0].cells
                 for i, col in enumerate(df_resumen.columns):
                     hdr_cells[i].text = str(col)
                 
-                # Filas de datos
                 for _, row in df_resumen.iterrows():
                     row_cells = tabla.add_row().cells
                     for i, val in enumerate(row):
@@ -52,30 +102,30 @@ def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, plantilla_pa
                 p._p.addnext(tabla._element)
             break
 
-    # 3. Insertar Imagen del Diagrama Sankey
+    # 5. Insertar Imagen del Diagrama Sankey
     if fig_sankey is not None:
         try:
-            sankey_bytes = fig_sankey.to_image(format="png", width=900, height=500)
+            sankey_bytes = fig_sankey.to_image(format="png", width=1100, height=650)
             for p in doc.paragraphs:
                 if "{{DIAGRAMA_SANKEY_IMAGEN}}" in p.text:
                     p.text = p.text.replace("{{DIAGRAMA_SANKEY_IMAGEN}}", "")
                     run = p.add_run()
-                    run.add_picture(BytesIO(sankey_bytes), width=Inches(6.0))
+                    run.add_picture(BytesIO(sankey_bytes), width=Inches(6.5))
                     break
         except Exception:
             for p in doc.paragraphs:
                 if "{{DIAGRAMA_SANKEY_IMAGEN}}" in p.text:
                     p.text = p.text.replace("{{DIAGRAMA_SANKEY_IMAGEN}}", "(Diagrama Sankey disponible en la plataforma)")
 
-    # 4. Insertar Imagen del Gráfico de Pareto
+    # 6. Insertar Imagen del Gráfico de Pareto
     if fig_pareto is not None:
         try:
-            pareto_bytes = fig_pareto.to_image(format="png", width=900, height=500)
+            pareto_bytes = fig_pareto.to_image(format="png", width=1100, height=600)
             for p in doc.paragraphs:
                 if "{{DIAGRAMA_PARETO_IMAGEN}}" in p.text:
                     p.text = p.text.replace("{{DIAGRAMA_PARETO_IMAGEN}}", "")
                     run = p.add_run()
-                    run.add_picture(BytesIO(pareto_bytes), width=Inches(6.0))
+                    run.add_picture(BytesIO(pareto_bytes), width=Inches(6.5))
                     break
         except Exception:
             for p in doc.paragraphs:
@@ -83,7 +133,6 @@ def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, plantilla_pa
                     p.text = p.text.replace("{{DIAGRAMA_PARETO_IMAGEN}}", "(Gráfico de Pareto disponible en la plataforma)")
 
     doc.save(salida_path)
-
 # Reiniciar datos cada vez que se recarga la app
 if "sankey_data" not in st.session_state:
     st.session_state["sankey_data"] = []
@@ -1868,33 +1917,23 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         height=550,
         margin=dict(b=120)
     )
-# --- CONSTRUCCIÓN DINÁMICA DE CONSEJOS ---
+# --- CONSTRUCCIÓN DE ESTRUCTURA DE CONSEJOS ---
     usos_unicos = sorted(list(set(d["uso"] for d in sankey_data)))
     subusos_unicos = sorted(list(set(d["subuso"] for d in sankey_data)))
 
-    # 1. Obtener consejos generales por servicio
-    lista_consejos_servicio = []
+    consejos_servicios_dict = {}
     for uso in usos_unicos:
         clave_general = next(
             (k for k in consejos.keys() if uso.lower() in k.lower() and "(consejos generales)" in k.lower()),
             None
         )
         if clave_general and clave_general in consejos:
-            lista_consejos_servicio.append(f"• {uso}:")
-            for c in consejos[clave_general]:
-                lista_consejos_servicio.append(f"   - {c}")
+            consejos_servicios_dict[uso] = consejos[clave_general]
 
-    texto_consejos_servicio = "\n".join(lista_consejos_servicio) if lista_consejos_servicio else "Sin recomendaciones generales aplicables."
-
-    # 2. Obtener consejos específicos por equipo
-    lista_consejos_equipo = []
+    consejos_equipos_dict = {}
     for sub in subusos_unicos:
         if sub in consejos:
-            lista_consejos_equipo.append(f"• {sub}:")
-            for c in consejos[sub]:
-                lista_consejos_equipo.append(f"   - {c}")
-
-    texto_consejos_equipo = "\n".join(lista_consejos_equipo) if lista_consejos_equipo else "Sin recomendaciones específicas aplicables."
+            consejos_equipos_dict[sub] = consejos[sub]
 
     # --- DICCIONARIO DE DATOS MAPEADO ---
     datos_reporte = {
@@ -1921,16 +1960,22 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         "PISO_2_MAYOR_CONSUMO": piso_segundo,
         "CONSUMO_PISO_2_MAYOR_CONSUMO": f"{consumo_piso_segundo:,.0f}" if piso_segundo != "No aplica" else "No aplica",
         "SERVICIO_PISO_2_MAYOR_CONSUMO": servicio_piso_segundo,
-        "EQUIPO_PISO_2_MAYOR_CONSUMO": equipo_piso_segundo,
-
-        # Mapeo de consejos en texto dinámico en viñetas
-        "CONSEJOS_GENERALES_SERVICIO": texto_consejos_servicio,
-        "CONSEJOS_GENERALES_EQUIPO": texto_consejos_equipo
+        "EQUIPO_PISO_2_MAYOR_CONSUMO": equipo_piso_segundo
     }
 
     docx_salida = os.path.join(BASE_DIR, "reporte_temp.docx")
-    generar_reporte_word(datos_reporte, df_tabla_word, fig_sankey, fig_pareto, plantilla, docx_salida)
 
+    # Llamada con los diccionarios estructurados de consejos
+    generar_reporte_word(
+        datos_reporte, 
+        df_tabla_word, 
+        fig_sankey, 
+        fig_pareto, 
+        consejos_servicios_dict, 
+        consejos_equipos_dict, 
+        plantilla, 
+        docx_salida
+    )
     try:
         cmd = ["soffice", "--headless", "--convert-to", "pdf", docx_salida, "--outdir", BASE_DIR]
         subprocess.run(cmd, check=True)
