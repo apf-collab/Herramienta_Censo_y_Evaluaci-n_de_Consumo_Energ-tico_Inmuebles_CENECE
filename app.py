@@ -1321,6 +1321,8 @@ with tab_residencial:
 
     if not st.session_state.res_tab_msg_shown:
         st.toast("Si no conoces la potencia electrica de algun equipo, revisa su etiqueta o placa de datos.", icon="🔎")
+        font=dict(color="black", size=13, family="Arial"), 
+        height=600,
         st.session_state.res_tab_msg_shown = True
 
     limites_tarifa = {
