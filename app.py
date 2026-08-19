@@ -656,7 +656,7 @@ with tab_oficina:
                             if nuevo_registro not in st.session_state["sankey_data"]:
                                 st.session_state["sankey_data"].append(nuevo_registro)
 
-    elif modo_calculo == "Por piso":
+elif modo_calculo == "Por piso":
         st.subheader("🏢 Cálculo de consumo por piso — Oficina")
 
         num_pisos = st.number_input(
@@ -699,13 +699,52 @@ with tab_oficina:
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-                                # 2. Equipos de Fuerza (Cálculo basado en HP y Eficiencia)
+                                # 2. Manejo de "Otro" / "Otros" por piso
+                                elif sub in ["Otros", "Otro"]:
+                                    otros_equipos = st.session_state.get(f"{key_base}_otros", [])
+                                    agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
+
+                                    if agregar:
+                                        otros_equipos.append({"nombre": "", "potencia": 0, "horas": 8})
+                                        st.session_state[f"{key_base}_otros"] = otros_equipos
+                                        st.rerun()
+
+                                    for i, equipo in enumerate(otros_equipos):
+                                        with st.expander(f"⚙️ Equipo {i+1} — {equipo.get('nombre','(sin nombre)')}", expanded=True):
+                                            cols = st.columns([3, 1])
+                                            with cols[0]:
+                                                nombre = st.text_input("Nombre del equipo:", value=equipo["nombre"], key=f"{key_base}_nombre_{i}")
+                                            with cols[1]:
+                                                eliminar = st.button("🗑️ Eliminar", key=f"{key_base}_del_{i}")
+
+                                            num_eq = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num_{i}")
+                                            potencia = st.number_input("Potencia (W):", min_value=0, max_value=50000, value=equipo.get("potencia", 100), key=f"{key_base}_pot_{i}")
+                                            horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=float(equipo.get("horas", 8.0)), step=1.0, key=f"{key_base}_hr_{i}")
+
+                                            otros_equipos[i] = {"nombre": nombre, "potencia": potencia, "horas": horas}
+                                            st.session_state[f"{key_base}_otros"] = otros_equipos
+
+                                            kwh_mes = round(potencia / 1000 * horas * num_eq * factor_mensual, 2)
+                                            nuevo_registro = {
+                                                "origen": "Energía eléctrica",
+                                                "piso": f"Piso {piso}",
+                                                "uso": uso,
+                                                "subuso": nombre or sub,
+                                                "valor": kwh_mes
+                                            }
+                                            if nuevo_registro not in st.session_state["sankey_data"]:
+                                                st.session_state["sankey_data"].append(nuevo_registro)
+                                            if eliminar:
+                                                otros_equipos.pop(i)
+                                                st.session_state[f"{key_base}_otros"] = otros_equipos
+                                                st.rerun()
+
+                                # 3. Equipos de fuerza por piso
                                 elif uso == "Equipos de fuerza":
                                     num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
                                     hp = st.number_input(f"Potencia en Caballos de Fuerza (HP) ({sub}):", min_value=0.1, value=1.0, step=0.5, key=f"{key_base}_hp")
                                     horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
-                                    # Cálculo de potencia eléctrica equivalente en Vatios (W)
                                     eficiencia = 0.75 if sub == "Hidroneumático" else 0.85
                                     potencia_w = (hp * 746) / eficiencia
 
@@ -728,7 +767,7 @@ with tab_oficina:
                                     if nuevo_registro not in st.session_state["sankey_data"]:
                                         st.session_state["sankey_data"].append(nuevo_registro)
 
-                                # 3. Otros casos o usos generales
+                                # 4. Resto de equipos por piso
                                 else:
                                     num_equipos = st.number_input(f"N° equipos ({sub})", min_value=1, step=1, key=f"{key_base}_num")
 
