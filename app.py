@@ -1850,8 +1850,8 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
 
     # --- DICCIONARIO DE DATOS MAPEADO ---
     datos_reporte = {
-        "NOMBRE_INM": st.session_state.get("nombre_inmueble", "No especificado"),
-        "TIPO_INM": st.session_state.get("tipo_inmueble", "No especificado"),
+        "NOMBRE_INM": nombre_inm_input.strip(),
+        "TIPO_INM": tipo_inm_final,
         "FECHA": date.today().strftime("%d/%m/%Y"),
         "CONSUMO_TOTAL_MENSUAL": f"{consumo_total:,.0f}",
 
