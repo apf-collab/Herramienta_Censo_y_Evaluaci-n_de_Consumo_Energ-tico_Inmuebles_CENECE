@@ -31,14 +31,19 @@ def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, plantilla_pa
             p.text = p.text.replace("{{TABLA_RESUMEN}}", "")
             if df_resumen is not None and not df_resumen.empty:
                 tabla = doc.add_table(rows=1, cols=len(df_resumen.columns))
-                tabla.style = 'Table Grid'
+                
+                # Intenta aplicar estilo con bordes, si no existe en la plantilla no detiene la ejecución
+                try:
+                    tabla.style = 'Table Grid'
+                except Exception:
+                    pass
                 
                 # Encabezados
                 hdr_cells = tabla.rows[0].cells
                 for i, col in enumerate(df_resumen.columns):
                     hdr_cells[i].text = str(col)
                 
-                # Filas
+                # Filas de datos
                 for _, row in df_resumen.iterrows():
                     row_cells = tabla.add_row().cells
                     for i, val in enumerate(row):
