@@ -1868,6 +1868,33 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         height=550,
         margin=dict(b=120)
     )
+# --- CONSTRUCCIÓN DINÁMICA DE CONSEJOS ---
+    usos_unicos = sorted(list(set(d["uso"] for d in sankey_data)))
+    subusos_unicos = sorted(list(set(d["subuso"] for d in sankey_data)))
+
+    # 1. Obtener consejos generales por servicio
+    lista_consejos_servicio = []
+    for uso in usos_unicos:
+        clave_general = next(
+            (k for k in consejos.keys() if uso.lower() in k.lower() and "(consejos generales)" in k.lower()),
+            None
+        )
+        if clave_general and clave_general in consejos:
+            lista_consejos_servicio.append(f"• {uso}:")
+            for c in consejos[clave_general]:
+                lista_consejos_servicio.append(f"   - {c}")
+
+    texto_consejos_servicio = "\n".join(lista_consejos_servicio) if lista_consejos_servicio else "Sin recomendaciones generales aplicables."
+
+    # 2. Obtener consejos específicos por equipo
+    lista_consejos_equipo = []
+    for sub in subusos_unicos:
+        if sub in consejos:
+            lista_consejos_equipo.append(f"• {sub}:")
+            for c in consejos[sub]:
+                lista_consejos_equipo.append(f"   - {c}")
+
+    texto_consejos_equipo = "\n".join(lista_consejos_equipo) if lista_consejos_equipo else "Sin recomendaciones específicas aplicables."
 
     # --- DICCIONARIO DE DATOS MAPEADO ---
     datos_reporte = {
@@ -1896,8 +1923,9 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         "SERVICIO_PISO_2_MAYOR_CONSUMO": servicio_piso_segundo,
         "EQUIPO_PISO_2_MAYOR_CONSUMO": equipo_piso_segundo,
 
-        "CONSEJOS_GENERALES_SERVICIO": "Revisar las recomendaciones específicas en la pestaña Consejos dentro de la aplicación.",
-        "CONSEJOS_GENERALES_EQUIPO": "Revisar las recomendaciones específicas en la pestaña Consejos dentro de la aplicación."
+        # Mapeo de consejos en texto dinámico en viñetas
+        "CONSEJOS_GENERALES_SERVICIO": texto_consejos_servicio,
+        "CONSEJOS_GENERALES_EQUIPO": texto_consejos_equipo
     }
 
     docx_salida = os.path.join(BASE_DIR, "reporte_temp.docx")
