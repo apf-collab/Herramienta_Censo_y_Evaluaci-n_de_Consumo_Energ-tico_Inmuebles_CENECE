@@ -1713,13 +1713,29 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         st.sidebar.warning("⚠️ No hay datos suficientes para generar el reporte.")
         st.stop()
 
-    # --- DETECCIÓN AUTOMÁTICA DEL TIPO DE INMUEBLE ---
-    if any(k.startswith("otr_") for k in st.session_state if st.session_state.get(k)):
+    # --- DETECCIÓN EXACTA DEL TIPO DE INMUEBLE ---
+    es_otros = any(
+        (k == "otros_usos" and bool(st.session_state.get(k))) or
+        (k.startswith("otr_") and st.session_state.get(k) is True)
+        for k in st.session_state
+    )
+    es_salud = any(
+        (k == "salud_usos" and bool(st.session_state.get(k))) or
+        (k.startswith("sal_") and st.session_state.get(k) is True)
+        for k in st.session_state
+    )
+    es_residencial = any(
+        (k in ["res_usos_global", "res_usos_piso_1"] and bool(st.session_state.get(k))) or
+        (k.startswith("res_") and k.endswith("_check") and st.session_state.get(k) is True)
+        for k in st.session_state
+    )
+
+    if es_otros:
         custom_val = st.session_state.get("tipo_otros_custom", "").strip()
         tipo_inm_final = custom_val if custom_val else "Otros usos"
-    elif any(k.startswith("sal_") for k in st.session_state if st.session_state.get(k)):
+    elif es_salud:
         tipo_inm_final = "Servicio de salud"
-    elif any(k.startswith("res_") for k in st.session_state if st.session_state.get(k)):
+    elif es_residencial:
         tipo_inm_final = "Residencial"
     else:
         tipo_inm_final = "Oficina"
@@ -1729,7 +1745,7 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
 
     tiene_pisos = "piso" in df.columns and df["piso"].notna().any()
 
-    # Rutas absolutas
+    # Rutas absolutas a plantillas
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
     if tiene_pisos:
@@ -1794,7 +1810,7 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         equipo_piso_mayor = consumo_equipo_piso_mayor = "No aplica"
         servicio_piso_segundo = equipo_piso_segundo = "No aplica"
 
-    # --- TABLA RESUMEN ---
+    # --- TABLA RESUMEN PARA EL REPORTE ---
     df_tabla_word = df.copy()
     if tiene_pisos:
         df_tabla_word = df_tabla_word.rename(columns={"piso": "Piso", "uso": "Servicio", "subuso": "Equipo", "valor": "Consumo (kWh/mes)"})
@@ -1902,7 +1918,7 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
                 mime="application/pdf"
             )
     except Exception:
-        st.sidebar.warning("⚠️ No se pudo convertir a PDF. Puedes descargar la versión Word:")
+        st.sidebar.warning("⚠️ Ocurrió un problema al convertir a PDF. Puedes descargar la versión Word:")
         with open(docx_salida, "rb") as f:
             st.sidebar.download_button(
                 "⬇️ Descargar reporte (DOCX)",
@@ -1910,7 +1926,6 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
                 file_name=nombre_pdf.replace(".pdf", ".docx"),
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
-
 # Mostrar tabla resumen
 if st.session_state["mostrar_tabla"]:
     sankey_data = st.session_state.get("sankey_data", [])
