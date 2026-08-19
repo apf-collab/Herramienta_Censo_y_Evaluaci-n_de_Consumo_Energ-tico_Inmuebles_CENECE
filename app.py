@@ -1098,7 +1098,7 @@ with tab_otros:
                             # Cálculo de la potencia eléctrica equivalente en Vatios (W)
                             eficiencia = 0.75 if sub == "Hidroneumático" else 0.85
                             potencia_w = (hp * 746) / eficiencia
-#                            st.caption(f"⚡ Potencia eléctrica calculada: **{round(potencia_w, 2)} W**")
+                            # st.caption(f"⚡ Potencia eléctrica calculada: **{round(potencia_w, 2)} W**")
 
                             kwh_mes = calcular_kwh_mes(
                                 potencia_w=potencia_w,
@@ -1115,7 +1115,7 @@ with tab_otros:
                             }
                             if nuevo_registro not in st.session_state["sankey_data"]:
                                 st.session_state["sankey_data"].append(nuevo_registro)
-                                
+
                         elif sub in ["Otros", "Otro"]:
                             otros_equipos = st.session_state.get(f"{key_base}_otros", [])
                             agregar = st.button(f"➕ Agregar equipo a {uso} ({sub})", key=f"{key_base}_add")
@@ -1170,20 +1170,20 @@ with tab_otros:
         st.subheader("🏦 Cálculo de consumo por piso — Otros usos")
         num_pisos = st.number_input(
             "Número de pisos del inmueble:",
-            min_value=1, step=1, value=1, key="salud_pisos"
+            min_value=1, step=1, value=1, key="otros_pisos"
         )
 
         for piso in range(1, num_pisos + 1):
             with st.expander(f"Piso {piso}", expanded=(piso == 1)):
-                usos = usos_por_inmueble["Salud"]
-                usos_sel = st.multiselect(f"Selecciona los usos en Piso {piso}:", usos, key=f"sal_usos_piso_{piso}")
+                usos = usos_por_inmueble["Otros usos"]
+                usos_sel = st.multiselect(f"Selecciona los usos en Piso {piso}:", usos, key=f"otr_usos_piso_{piso}")
 
                 for uso in usos_sel:
                     st.subheader(f"{uso} (Piso {piso})")
 
                     if uso in subusos:
                         for sub in subusos[uso]:
-                            key_base = f"sal_p{piso}_{uso}_{sub}"
+                            key_base = f"otr_p{piso}_{uso}_{sub}"
                             marcado = st.checkbox(sub, key=f"{key_base}_check")
                             if marcado:
                                 agregar_subuso_seleccionado(sub)
