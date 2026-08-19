@@ -914,7 +914,7 @@ with tab_salud:
                                 st.session_state["sankey_data"].append(nuevo_registro)
 
     elif modo_calculo == "Por piso":
-        st.subheader("🏥 Cálculo de consumo por piso — Salud")
+            st.subheader("🏥 Cálculo de consumo por piso — Salud")
             num_pisos = st.number_input(
                 "Número de pisos del inmueble:",
                 min_value=1, step=1, value=1, key="oficina_pisos"
