@@ -1604,7 +1604,6 @@ with tab_consejos:
                 nombre_equipo = key.split("_", 2)[-1]
                 subusos_activos.append(nombre_equipo)
     st.session_state["subusos_seleccionados"] = list(set(subusos_activos))
-
 # ------------------------
 # Resultados
 # ------------------------
@@ -1641,31 +1640,30 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
 
     tiene_pisos = "piso" in df.columns and df["piso"].notna().any()
 
+    # Selección automática de plantilla corregida
     if tiene_pisos:
-        plantilla = "templates/reporte_base_piso.docx"
+        plantilla = "templates/Plantilla_Informe_Por_piso_2.docx"
         nombre_reporte = "Reporte_Diagnostico_Energetico_Por_Piso.docx"
     else:
-        plantilla = "templates/reporte_base_global.docx"
+        plantilla = "templates/Plantilla_Informe_Global_2.docx"
         nombre_reporte = "Reporte_Diagnostico_Energetico_Global.docx"
 
-    servicio_global_mayor = df.groupby("uso")["valor"].sum().idxmax()
-    consumo_servicio_global_mayor = df[df["uso"] == servicio_global_mayor]["valor"].sum()
+    # --- CÁLCULOS GLOBALES Y DE SEGUNDO LUGAR ---
+    usos_ordenados = df.groupby("uso")["valor"].sum().sort_values(ascending=False)
+    servicio_global_mayor = usos_ordenados.index[0]
+    consumo_servicio_global_mayor = usos_ordenados.iloc[0]
 
-    equipo_global_mayor = df.groupby("subuso")["valor"].sum().idxmax()
-    consumo_equipo_global_mayor = df[df["subuso"] == equipo_global_mayor]["valor"].sum()
+    servicio_global_segundo = usos_ordenados.index[1] if len(usos_ordenados) > 1 else "No aplica"
+    consumo_servicio_global_segundo = usos_ordenados.iloc[1] if len(usos_ordenados) > 1 else 0
 
-    servicio_global_segundo = (
-        df.groupby("uso")["valor"].sum()
-        .sort_values(ascending=False)
-        .index[1] if df["uso"].nunique() > 1 else "No aplica"
-    )
+    equipos_ordenados = df.groupby("subuso")["valor"].sum().sort_values(ascending=False)
+    equipo_global_mayor = equipos_ordenados.index[0]
+    consumo_equipo_global_mayor = equipos_ordenados.iloc[0]
 
-    equipo_global_segundo = (
-        df.groupby("subuso")["valor"].sum()
-        .sort_values(ascending=False)
-        .index[1] if df["subuso"].nunique() > 1 else "No aplica"
-    )
+    equipo_global_segundo = equipos_ordenados.index[1] if len(equipos_ordenados) > 1 else "No aplica"
+    consumo_equipo_global_segundo = equipos_ordenados.iloc[1] if len(equipos_ordenados) > 1 else 0
 
+    # --- CÁLCULOS POR PISO (SI APLICA) ---
     if tiene_pisos:
         consumo_por_piso = df.groupby("piso")["valor"].sum().sort_values(ascending=False)
 
@@ -1673,45 +1671,112 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         consumo_piso_mayor = consumo_por_piso.iloc[0]
 
         piso_segundo = consumo_por_piso.index[1] if len(consumo_por_piso) > 1 else "No aplica"
-        consumo_piso_segundo = consumo_por_piso.iloc[1] if len(consumo_por_piso) > 1 else "No aplica"
+        consumo_piso_segundo = consumo_por_piso.iloc[1] if len(consumo_por_piso) > 1 else 0
 
         df_piso = df[df["piso"] == piso_mayor]
+        usos_piso = df_piso.groupby("uso")["valor"].sum().sort_values(ascending=False)
+        servicio_piso_mayor = usos_piso.index[0]
+        consumo_servicio_piso_mayor = usos_piso.iloc[0]
 
-        servicio_piso_mayor = df_piso.groupby("uso")["valor"].sum().idxmax()
-        consumo_servicio_piso_mayor = df_piso[df_piso["uso"] == servicio_piso_mayor]["valor"].sum()
+        equipos_piso = df_piso.groupby("subuso")["valor"].sum().sort_values(ascending=False)
+        equipo_piso_mayor = equipos_piso.index[0]
+        consumo_equipo_piso_mayor = equipos_piso.iloc[0]
 
-        equipo_piso_mayor = df_piso.groupby("subuso")["valor"].sum().idxmax()
-        consumo_equipo_piso_mayor = df_piso[df_piso["subuso"] == equipo_piso_mayor]["valor"].sum()
+        # Segundo uso en el segundo piso con mayor consumo
+        if piso_segundo != "No aplica":
+            df_piso2 = df[df["piso"] == piso_segundo]
+            usos_piso2 = df_piso2.groupby("uso")["valor"].sum().sort_values(ascending=False)
+            servicio_piso_segundo = usos_piso2.index[0] if not usos_piso2.empty else "No aplica"
+            equipos_piso2 = df_piso2.groupby("subuso")["valor"].sum().sort_values(ascending=False)
+            equipo_piso_segundo = equipos_piso2.index[0] if not equipos_piso2.empty else "No aplica"
+        else:
+            servicio_piso_segundo = equipo_piso_segundo = "No aplica"
     else:
         piso_mayor = consumo_piso_mayor = "No aplica"
-        piso_segundo = consumo_piso_segundo = "No aplica"
+        piso_segundo = consumo_piso_segundo = 0
         servicio_piso_mayor = consumo_servicio_piso_mayor = "No aplica"
         equipo_piso_mayor = consumo_equipo_piso_mayor = "No aplica"
+        servicio_piso_segundo = equipo_piso_segundo = "No aplica"
 
+    # --- TABLA RESUMEN PARA EL REPORTE ---
+    df_tabla_word = df.copy()
+    if tiene_pisos:
+        df_tabla_word = df_tabla_word.rename(columns={"piso": "Piso", "uso": "Servicio", "subuso": "Equipo", "valor": "Consumo (kWh/mes)"})
+        cols = ["Piso", "Servicio", "Equipo", "Consumo (kWh/mes)"]
+    else:
+        df_tabla_word = df_tabla_word.rename(columns={"uso": "Servicio", "subuso": "Equipo", "valor": "Consumo (kWh/mes)"})
+        cols = ["Servicio", "Equipo", "Consumo (kWh/mes)"]
+
+    df_tabla_word = df_tabla_word[cols]
+    df_tabla_word["Consumo (kWh/mes)"] = df_tabla_word["Consumo (kWh/mes)"].map("{:,.2f}".format)
+
+    # --- GENERAR FIGURA SANKEY ---
+    if tiene_pisos:
+        labels = ["Energía eléctrica"] + sorted(df["piso"].unique().tolist()) + sorted(df["uso"].unique().tolist()) + sorted(df["subuso"].unique().tolist())
+    else:
+        labels = ["Energía eléctrica"] + sorted(df["uso"].unique().tolist()) + sorted(df["subuso"].unique().tolist())
+
+    label_index = {l: i for i, l in enumerate(labels)}
+    sources, targets, values = [], [], []
+
+    for d in sankey_data:
+        if tiene_pisos:
+            sources.extend([label_index["Energía eléctrica"], label_index[d["piso"]], label_index[d["uso"]]])
+            targets.extend([label_index[d["piso"]], label_index[d["uso"]], label_index[d["subuso"]]])
+            values.extend([d["valor"], d["valor"], d["valor"]])
+        else:
+            sources.extend([label_index["Energía eléctrica"], label_index[d["uso"]]])
+            targets.extend([label_index[d["uso"]], label_index[d["subuso"]]])
+            values.extend([d["valor"], d["valor"]])
+
+    fig_sankey = go.Figure(data=[go.Sankey(
+        node=dict(label=labels, pad=15, thickness=20),
+        link=dict(source=sources, target=targets, value=values)
+    )])
+
+    # --- GENERAR FIGURA PARETO ---
+    df_pareto = df.groupby("subuso")["valor"].sum().reset_index().sort_values(by="valor", ascending=False)
+    df_pareto["% Acumulado"] = df_pareto["valor"].cumsum() / df_pareto["valor"].sum() * 100
+
+    fig_pareto = go.Figure()
+    fig_pareto.add_trace(go.Bar(x=df_pareto["subuso"], y=df_pareto["valor"], name="Consumo (kWh/mes)", marker_color="steelblue"))
+    fig_pareto.add_trace(go.Scatter(x=df_pareto["subuso"], y=df_pareto["% Acumulado"], name="% Acumulado", yaxis="y2", mode="lines+markers", marker_color="crimson"))
+    fig_pareto.update_layout(yaxis2=dict(overlaying="y", side="right", range=[0, 110]))
+
+    # --- DICCIONARIO DE REEMPLAZO MAPEADO A LAS PLANTILLAS ---
     datos_reporte = {
-        "INMUEBLE": st.session_state.get("nombre_inmueble", "No especificado"),
-        "TIPO_INMUEBLE": st.session_state.get("tipo_inmueble", "No especificado"),
-        "DEPENDENCIA": st.session_state.get("dependencia", "No especificado"),
-        "FECHA_REPORTE": date.today().strftime("%d/%m/%Y"),
-        "CONSUMO_TOTAL_KWH": f"{consumo_total:,.0f} kWh/mes",
-        "PISO_MAYOR_CONSUMO": piso_mayor,
-        "CONSUMO_PISO_MAYOR_CONSUMO_KWH": f"{consumo_piso_mayor:,.0f} kWh/mes" if piso_mayor != "No aplica" else "No aplica",
-        "PISO_SEGUNDO_CONSUMO": piso_segundo,
-        "CONSUMO_PISO_SEGUNDO_KWH": f"{consumo_piso_segundo:,.0f} kWh/mes" if piso_segundo != "No aplica" else "No aplica",
-        "SERVICIO_PISO_MAYOR": servicio_piso_mayor,
-        "CONSUMO_SERVICIO_PISO_MAYOR": f"{consumo_servicio_piso_mayor:,.0f} kWh/mes" if servicio_piso_mayor != "No aplica" else "No aplica",
-        "EQUIPO_PISO_MAYOR": equipo_piso_mayor,
-        "CONSUMO_EQUIPO_PISO_MAYOR": f"{consumo_equipo_piso_mayor:,.0f} kWh/mes" if equipo_piso_mayor != "No aplica" else "No aplica",
+        "NOMBRE_INM": st.session_state.get("nombre_inmueble", "No especificado"),
+        "TIPO_INM": st.session_state.get("tipo_inmueble", "No especificado"),
+        "FECHA": date.today().strftime("%d/%m/%Y"),
+        "CONSUMO_TOTAL_MENSUAL": f"{consumo_total:,.0f}",
+
         "SERVICIO_GLOBAL_MAYOR": servicio_global_mayor,
-        "CONSUMO_SERVICIO_GLOBAL_MAYOR": f"{consumo_servicio_global_mayor:,.0f} kWh/mes",
+        "CONSUMO_SERVICIO_GLOBAL_MAYOR": f"{consumo_servicio_global_mayor:,.0f}",
         "EQUIPO_GLOBAL_MAYOR": equipo_global_mayor,
-        "CONSUMO_EQUIPO_GLOBAL_MAYOR": f"{consumo_equipo_global_mayor:,.0f} kWh/mes",
-        "SERVICIO_GLOBAL_SEGUNDO": servicio_global_segundo,
-        "EQUIPO_GLOBAL_SEGUNDO": equipo_global_segundo,
+        "CONSUMO_EQUIPO_GLOBAL_MAYOR": f"{consumo_equipo_global_mayor:,.0f}",
+        "SERVICIO_2_GLOBAL_MAYOR": servicio_global_segundo,
+        "CONSUMO_SERVICIO_2_GLOBAL_MAYOR": f"{consumo_servicio_global_segundo:,.0f}" if servicio_global_segundo != "No aplica" else "No aplica",
+        "EQUIPO_2_GLOBAL_MAYOR": equipo_global_segundo,
+        "CONSUMO_EQUIPO_2_GLOBAL_MAYOR": f"{consumo_equipo_global_segundo:,.0f}" if equipo_global_segundo != "No aplica" else "No aplica",
+
+        "PISO_MAYOR_CONSUMO": piso_mayor,
+        "CONSUMO_PISO_MAYOR_CONSUMO_KWH": f"{consumo_piso_mayor:,.0f}" if piso_mayor != "No aplica" else "No aplica",
+        "SERVICIO_PISO_MAYOR": servicio_piso_mayor,
+        "CONSUMO_SERVICIO_PISO_MAYOR": f"{consumo_servicio_piso_mayor:,.0f}" if servicio_piso_mayor != "No aplica" else "No aplica",
+        "EQUIPO_PISO_MAYOR": equipo_piso_mayor,
+        "CONSUMO_EQUIPO_PISO_MAYOR": f"{consumo_equipo_piso_mayor:,.0f}" if equipo_piso_mayor != "No aplica" else "No aplica",
+        "PISO_2_MAYOR_CONSUMO": piso_segundo,
+        "CONSUMO_PISO_2_MAYOR_CONSUMO": f"{consumo_piso_segundo:,.0f}" if piso_segundo != "No aplica" else "No aplica",
+        "SERVICIO_PISO_2_MAYOR_CONSUMO": servicio_piso_segundo,
+        "EQUIPO_PISO_2_MAYOR_CONSUMO": equipo_piso_segundo,
+
+        "CONSEJOS_GENERALES_SERVICIO": "Revisar las recomendaciones específicas en la pestaña Consejos dentro de la aplicación.",
+        "CONSEJOS_GENERALES_EQUIPO": "Revisar las recomendaciones específicas en la pestaña Consejos dentro de la aplicación."
     }
 
-    generar_reporte_word(datos_reporte, plantilla, "reporte_resultados.docx")
-    st.sidebar.success("Reporte generado correctamente")
+    # Generación física del documento
+    generar_reporte_word(datos_reporte, df_tabla_word, fig_sankey, fig_pareto, plantilla, "reporte_resultados.docx")
+    st.sidebar.success("✅ Reporte generado correctamente")
 
     with open("reporte_resultados.docx", "rb") as f:
         st.sidebar.download_button(
@@ -1761,9 +1826,6 @@ if st.session_state["mostrar_tabla"]:
         )
 
 # Mostrar Sankey
-# ------------------------
-# Mostrar Sankey (compatible con Global y Por piso)
-# ------------------------
 if st.session_state["mostrar_sankey"]:
     sankey_data = st.session_state.get("sankey_data", [])
     if not sankey_data:
@@ -1773,10 +1835,7 @@ if st.session_state["mostrar_sankey"]:
         tiene_pisos = "piso" in df.columns and df["piso"].notna().any()
 
         if tiene_pisos:
-            labels = ["Energía eléctrica"] \
-                     + sorted(df["piso"].unique().tolist()) \
-                     + sorted(df["uso"].unique().tolist()) \
-                     + sorted(df["subuso"].unique().tolist())
+            labels = ["Energía eléctrica"] + sorted(df["piso"].unique().tolist()) + sorted(df["uso"].unique().tolist()) + sorted(df["subuso"].unique().tolist())
 
             label_index = {l: i for i, l in enumerate(labels)}
             sources, targets, values = [], [], []
@@ -1811,7 +1870,6 @@ if st.session_state["mostrar_sankey"]:
                 values.append(d["valor"])
 
         fig = go.Figure(data=[go.Sankey(
-            # 🎨 AQUÍ VA 'textfont': directamente en go.Sankey (fuera de 'node')
             textfont=dict(color="black", size=13, family="Arial"),
             node=dict(
                 label=labels,
@@ -1823,7 +1881,7 @@ if st.session_state["mostrar_sankey"]:
                 source=sources,
                 target=targets,
                 value=values,
-                color="rgba(200, 200, 200, 0.45)"  # Gris semitransparente para mejor lectura
+                color="rgba(200, 200, 200, 0.45)"
             )
         )])
         
@@ -1833,9 +1891,8 @@ if st.session_state["mostrar_sankey"]:
             height=600
         )
 
-        # 🎨 `theme=None` remueve la sombra borrosa inyectada por Streamlit
         st.plotly_chart(fig, use_container_width=True, theme=None)
-        
+
 # Mostrar gráfico de Pareto
 if st.session_state["mostrar_pareto"]:
     sankey_data = st.session_state.get("sankey_data", [])
