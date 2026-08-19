@@ -8,6 +8,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import time
+import os
+import subprocess
 from datetime import date
 from docx import Document
 from docx.shared import Inches
@@ -1694,13 +1696,15 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
 
     tiene_pisos = "piso" in df.columns and df["piso"].notna().any()
 
-    # Selección automática de plantilla corregida
+    # Rutas absolutas a plantillas (evita PackageNotFoundError en Linux)
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
     if tiene_pisos:
-        plantilla = "templates/Plantilla_Informe_Por_piso.docx"
-        nombre_reporte = "Reporte_Energetico_Por_Piso.docx"
+        plantilla = os.path.join(BASE_DIR, "templates", "Plantilla_Informe_Por_piso_2.docx")
+        nombre_pdf = "Reporte_Diagnostico_Energetico_Por_Piso.pdf"
     else:
-        plantilla = "templates/Plantilla_Informe_Global.docx"
-        nombre_reporte = "Reporte_Energetico_Global.docx"
+        plantilla = os.path.join(BASE_DIR, "templates", "Plantilla_Informe_Global_2.docx")
+        nombre_pdf = "Reporte_Diagnostico_Energetico_Global.pdf"
 
     # --- CÁLCULOS GLOBALES Y DE SEGUNDO LUGAR ---
     usos_ordenados = df.groupby("uso")["valor"].sum().sort_values(ascending=False)
@@ -1797,7 +1801,7 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
     fig_pareto.add_trace(go.Scatter(x=df_pareto["subuso"], y=df_pareto["% Acumulado"], name="% Acumulado", yaxis="y2", mode="lines+markers", marker_color="crimson"))
     fig_pareto.update_layout(yaxis2=dict(overlaying="y", side="right", range=[0, 110]))
 
-    # --- DICCIONARIO DE REEMPLAZO MAPEADO A LAS PLANTILLAS ---
+    # --- DICCIONARIO DE DATOS MAPEADO ---
     datos_reporte = {
         "NOMBRE_INM": st.session_state.get("nombre_inmueble", "No especificado"),
         "TIPO_INM": st.session_state.get("tipo_inmueble", "No especificado"),
@@ -1828,17 +1832,34 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         "CONSEJOS_GENERALES_EQUIPO": "Revisar las recomendaciones específicas en la pestaña Consejos dentro de la aplicación."
     }
 
-    # Generación física del documento
-    generar_reporte_word(datos_reporte, df_tabla_word, fig_sankey, fig_pareto, plantilla, "reporte_resultados.docx")
-    st.sidebar.success("✅ Reporte generado correctamente")
+    # 1. Generar documento Word temporal
+    docx_salida = os.path.join(BASE_DIR, "reporte_temp.docx")
+    generar_reporte_word(datos_reporte, df_tabla_word, fig_sankey, fig_pareto, plantilla, docx_salida)
 
-    with open("reporte_resultados.docx", "rb") as f:
-        st.sidebar.download_button(
-            "⬇️ Descargar reporte",
-            data=f,
-            file_name=nombre_reporte,
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+    # 2. Convertir DOCX a PDF mediante LibreOffice
+    try:
+        cmd = ["soffice", "--headless", "--convert-to", "pdf", docx_salida, "--outdir", BASE_DIR]
+        subprocess.run(cmd, check=True)
+        pdf_salida = os.path.join(BASE_DIR, "reporte_temp.pdf")
+
+        st.sidebar.success("✅ Reporte PDF generado correctamente")
+
+        with open(pdf_salida, "rb") as f:
+            st.sidebar.download_button(
+                "⬇️ Descargar reporte (PDF)",
+                data=f,
+                file_name=nombre_pdf,
+                mime="application/pdf"
+            )
+    except Exception as e:
+        st.sidebar.error("⚠️ Ocurrió un inconveniente al generar el PDF. Puedes descargar la versión en Word:")
+        with open(docx_salida, "rb") as f:
+            st.sidebar.download_button(
+                "⬇️ Descargar reporte (DOCX)",
+                data=f,
+                file_name=nombre_pdf.replace(".pdf", ".docx"),
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
 # Mostrar tabla resumen
 if st.session_state["mostrar_tabla"]:
