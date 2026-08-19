@@ -172,7 +172,8 @@ potencias_nominales = {
     "Ventilador de techo": 100, "Bocina inteligente (Amazon Echo / Echo Dot, Google Nest Mini, Apple HomePod)": 11,
     "Televisor LED / LCD": 150, "Televisor de plasma": 240, "Consola de videojuegos": 250, "Equipo de audio / estéreo": 120,
     "Lavadora 7-15 kg": 550, "Lavadora más de 15 kg": 800, "Secadora eléctrica": 1500, "Celular / Smartphone": 1.4,
-    "Lavavajillas":1350, "Servicio de televisión por cable": 20, "Caminadora": 2000, "Eliptica eléctrica": 250, 
+    "Lavavajillas":1350, "Servicio de televisión por cable": 20, "Caminadora": 1500, "Eliptica eléctrica": 200, "Bicicleta fija": 200,
+    "Pantalla informativa / display": 150, "Cama de hidromasaje": 2000, "Basculas": 50,
     "Escaladora": 1200, "Sillón de masaje": 300, "Calentador eléctrico instantaneo": 10000 ,  
     "Calentador eléctrico con deposito": 3500, "Resistencia eléctrica": 1500
 }
@@ -235,7 +236,7 @@ subusos = {
     "Servicios auxiliares (esterilización, calentadores eléctricos etc)": ["Servicios auxiliares (esterilización, calentadores eléctricos etc)"],
     "Sistemas audiovisuales": ["Televisor LED / LCD", "Televisor de plasma", "Consola de videojuegos", "Equipo de audio / estéreo", 
     "Bocina inteligente (Amazon Echo / Echo Dot, Google Nest Mini, Apple HomePod)", "Servicio de televisión por cable", "Otro"],
-    "Equipos de ejercicio y recreativos": ["Caminadora", "Eliptica eléctrica", "Escaladora", "Sillón de masaje", "Otros"],
+    "Equipos de ejercicio y recreativos": ["Caminadora", "Eliptica eléctrica", "Escaladora", "Bicicleta fija", "Cama de hidromasaje", "Sillón de masaje", "Otros"],
     "Equipos sanitarios": ["Bomba de agua", "Calentador eléctrico instantaneo", "Calentador eléctrico con deposito", "Resistencia eléctrica", "Otro"],
     "Entretenimiento": ["Televisor LED / LCD", "Televisor de plasma", "Consola de videojuegos", "Equipo de audio / estéreo", 
     "Bocina inteligente (Amazon Echo / Echo Dot, Google Nest Mini, Apple HomePod)", "Servicio de televisión por cable", "Otro"],
@@ -577,7 +578,12 @@ consejos = {
     "Consola de videojuegos": [
         "Ajustar calidad de gráficos y frecuencia de actualización reduce consumo de energía y temperatura.",
         "Evita jugar con todos los periféricos conectados innecesariamente."
-    ]
+    ],
+    "Equipos de ejercicio y recreativos (Consejos generales)": [
+        "Al adquirir equipos, optar por equipos mecanicos, generadores o con celda fotovoltaica.",
+        "Limitar el tiempo de uso a los usuarios según el equipo."
+        "Desconectar equipos al teminar la jornada."
+    ],
 }
 
 # Referencia más cómoda
