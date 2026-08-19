@@ -1121,7 +1121,12 @@ with tab_salud:
 # ------------------------
 with tab_otros:
     st.header("🏦 Otros usos — entrada de equipos y servicios")
-
+    st.text_input(
+        "Especifica el tipo de uso / inmueble (ej. Banco, Escuela, Comercio):",
+        placeholder="Ej. Banco, Escuela, Comercio, Gimnasio",
+        key="tipo_otros_custom"
+    )
+    
     if modo_calculo == "Global (todo el edificio)":
         usos = usos_por_inmueble["Otros usos"]
         usos_seleccionados = st.multiselect("Selecciona los usos de Otros:", usos, key="otros_usos")
@@ -1666,7 +1671,7 @@ with tab_consejos:
                 subusos_activos.append(nombre_equipo)
     st.session_state["subusos_seleccionados"] = list(set(subusos_activos))
 # ------------------------
-# Resultados
+# Resultados y Generación de Reporte
 # ------------------------
 st.sidebar.markdown("---")
 st.sidebar.header("Resultados:")
@@ -1689,59 +1694,42 @@ if st.sidebar.button("📊 Mostrar / Ocultar Pareto"):
 
 st.sidebar.divider()
 
-# --- CAMPOS PARA CAPTURAR DATOS DEL INMUEBLE ---
+# --- CAMPO ÚNICO PARA EL NOMBRE DEL INMUEBLE ---
 st.sidebar.subheader("📝 Datos para el Reporte")
-
 nombre_inm_input = st.sidebar.text_input(
     "Nombre del inmueble:", 
     placeholder="Ej. Edificio Sede CENECE", 
     key="nombre_inm_input"
 )
 
-# Detección automática del tipo de inmueble según los datos capturados
-sankey_data = st.session_state.get("sankey_data", [])
-usos_cargados = [d.get("uso") for d in sankey_data]
-
-default_idx = 0  # Oficina por defecto
-if any(u in ["Equipos médicos", "Equipos de laboratorio", "Servicios auxiliares (esterilización, calentadores eléctricos etc)"] for u in usos_cargados):
-    default_idx = 1  # Servicio de salud
-elif any(u in ["Sistemas audiovisuales", "Equipos de ejercicio y recreativos"] for u in usos_cargados):
-    default_idx = 2  # Otros usos
-elif any(u in ["Acondicionamiento de aire residencial", "Electrodomésticos residenciales", "Entretenimiento", "Equipos sanitarios"] for u in usos_cargados):
-    default_idx = 3  # Residencial
-
-tipo_inm_opcion = st.sidebar.selectbox(
-    "Tipo de inmueble:",
-    ["Oficina", "Servicio de salud", "Otros usos (especificar)", "Residencial"],
-    index=default_idx,
-    key="tipo_inm_opcion"
-)
-
-# Entrada de texto para "Otros usos"
-if tipo_inm_opcion == "Otros usos (especificar)":
-    tipo_inm_custom = st.sidebar.text_input(
-        "Especifica el tipo de inmueble:",
-        placeholder="Ej. Banco, Escuela, Comercio, Gimnasio",
-        key="tipo_inm_custom"
-    )
-    tipo_inm_final = tipo_inm_custom.strip() if tipo_inm_custom.strip() else "Otros usos"
-else:
-    tipo_inm_final = tipo_inm_opcion
-
 if st.sidebar.button("📄 Generar reporte de resultados"):
     if not nombre_inm_input.strip():
         st.sidebar.warning("⚠️ Por favor ingresa el nombre del inmueble antes de generar el reporte.")
         st.stop()
+
+    sankey_data = st.session_state.get("sankey_data", [])
+
     if not sankey_data:
         st.sidebar.warning("⚠️ No hay datos suficientes para generar el reporte.")
         st.stop()
+
+    # --- DETECCIÓN AUTOMÁTICA DEL TIPO DE INMUEBLE ---
+    if any(k.startswith("otr_") for k in st.session_state if st.session_state.get(k)):
+        custom_val = st.session_state.get("tipo_otros_custom", "").strip()
+        tipo_inm_final = custom_val if custom_val else "Otros usos"
+    elif any(k.startswith("sal_") for k in st.session_state if st.session_state.get(k)):
+        tipo_inm_final = "Servicio de salud"
+    elif any(k.startswith("res_") for k in st.session_state if st.session_state.get(k)):
+        tipo_inm_final = "Residencial"
+    else:
+        tipo_inm_final = "Oficina"
 
     df = pd.DataFrame(sankey_data)
     consumo_total = df["valor"].sum()
 
     tiene_pisos = "piso" in df.columns and df["piso"].notna().any()
 
-    # Rutas absolutas a plantillas (evita PackageNotFoundError en Linux)
+    # Rutas absolutas
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
     if tiene_pisos:
@@ -1752,6 +1740,10 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         nombre_pdf = "Reporte_Diagnostico_Energetico_Global.pdf"
 
     plantilla = os.path.join(BASE_DIR, "templates", nombre_plantilla)
+
+    if not os.path.exists(plantilla):
+        st.sidebar.error(f"❌ No se encontró la plantilla en: {plantilla}")
+        st.stop()
 
     # --- CÁLCULOS GLOBALES Y DE SEGUNDO LUGAR ---
     usos_ordenados = df.groupby("uso")["valor"].sum().sort_values(ascending=False)
@@ -1787,7 +1779,6 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         equipo_piso_mayor = equipos_piso.index[0]
         consumo_equipo_piso_mayor = equipos_piso.iloc[0]
 
-        # Segundo uso en el segundo piso con mayor consumo
         if piso_segundo != "No aplica":
             df_piso2 = df[df["piso"] == piso_segundo]
             usos_piso2 = df_piso2.groupby("uso")["valor"].sum().sort_values(ascending=False)
@@ -1803,7 +1794,7 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         equipo_piso_mayor = consumo_equipo_piso_mayor = "No aplica"
         servicio_piso_segundo = equipo_piso_segundo = "No aplica"
 
-    # --- TABLA RESUMEN PARA EL REPORTE ---
+    # --- TABLA RESUMEN ---
     df_tabla_word = df.copy()
     if tiene_pisos:
         df_tabla_word = df_tabla_word.rename(columns={"piso": "Piso", "uso": "Servicio", "subuso": "Equipo", "valor": "Consumo (kWh/mes)"})
@@ -1815,13 +1806,16 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
     df_tabla_word = df_tabla_word[cols]
     df_tabla_word["Consumo (kWh/mes)"] = df_tabla_word["Consumo (kWh/mes)"].map("{:,.2f}".format)
 
-    # --- GENERAR FIGURA SANKEY ---
+    # --- FIGURAS PLOTLY CON COLOR Y TAMAÑO MEJORADO ---
+    paleta_colores = px.colors.qualitative.Plotly * 5
+
     if tiene_pisos:
         labels = ["Energía eléctrica"] + sorted(df["piso"].unique().tolist()) + sorted(df["uso"].unique().tolist()) + sorted(df["subuso"].unique().tolist())
     else:
         labels = ["Energía eléctrica"] + sorted(df["uso"].unique().tolist()) + sorted(df["subuso"].unique().tolist())
 
     label_index = {l: i for i, l in enumerate(labels)}
+    node_colors = [paleta_colores[i % len(paleta_colores)] for i in range(len(labels))]
     sources, targets, values = [], [], []
 
     for d in sankey_data:
@@ -1834,19 +1828,30 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
             targets.extend([label_index[d["uso"]], label_index[d["subuso"]]])
             values.extend([d["valor"], d["valor"]])
 
-    fig_sankey = go.Figure(data=[go.Sankey(
-        node=dict(label=labels, pad=15, thickness=20),
-        link=dict(source=sources, target=targets, value=values)
-    )])
+    link_colors = [node_colors[t].replace("rgb", "rgba").replace(")", ", 0.35)") if "rgb" in node_colors[t] else "rgba(100, 149, 237, 0.35)" for t in targets]
 
-    # --- GENERAR FIGURA PARETO ---
+    fig_sankey = go.Figure(data=[go.Sankey(
+        textfont=dict(color="black", size=14, family="Arial"),
+        node=dict(label=labels, color=node_colors, pad=18, thickness=25, line=dict(color="black", width=0.5)),
+        link=dict(source=sources, target=targets, value=values, color=link_colors)
+    )])
+    fig_sankey.update_layout(title_text="🔌 Diagrama Sankey del consumo (kWh/mes)", font=dict(color="black", size=13, family="Arial"), height=750)
+
     df_pareto = df.groupby("subuso")["valor"].sum().reset_index().sort_values(by="valor", ascending=False)
     df_pareto["% Acumulado"] = df_pareto["valor"].cumsum() / df_pareto["valor"].sum() * 100
 
     fig_pareto = go.Figure()
     fig_pareto.add_trace(go.Bar(x=df_pareto["subuso"], y=df_pareto["valor"], name="Consumo (kWh/mes)", marker_color="steelblue"))
     fig_pareto.add_trace(go.Scatter(x=df_pareto["subuso"], y=df_pareto["% Acumulado"], name="% Acumulado", yaxis="y2", mode="lines+markers", marker_color="crimson"))
-    fig_pareto.update_layout(yaxis2=dict(overlaying="y", side="right", range=[0, 110]))
+    fig_pareto.update_layout(
+        title="📊 Gráfico de Pareto de consumo por equipo",
+        xaxis=dict(title="Equipo", tickangle=-45, automargin=True),
+        yaxis=dict(title="Consumo (kWh/mes)"),
+        yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 110]),
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        height=550,
+        margin=dict(b=120)
+    )
 
     # --- DICCIONARIO DE DATOS MAPEADO ---
     datos_reporte = {
@@ -1879,11 +1884,9 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
         "CONSEJOS_GENERALES_EQUIPO": "Revisar las recomendaciones específicas en la pestaña Consejos dentro de la aplicación."
     }
 
-    # 1. Generar documento Word temporal
     docx_salida = os.path.join(BASE_DIR, "reporte_temp.docx")
     generar_reporte_word(datos_reporte, df_tabla_word, fig_sankey, fig_pareto, plantilla, docx_salida)
 
-    # 2. Convertir DOCX a PDF mediante LibreOffice
     try:
         cmd = ["soffice", "--headless", "--convert-to", "pdf", docx_salida, "--outdir", BASE_DIR]
         subprocess.run(cmd, check=True)
@@ -1898,8 +1901,8 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
                 file_name=nombre_pdf,
                 mime="application/pdf"
             )
-    except Exception as e:
-        st.sidebar.error("⚠️ Ocurrió un inconveniente al generar el PDF. Puedes descargar la versión en Word:")
+    except Exception:
+        st.sidebar.warning("⚠️ No se pudo convertir a PDF. Puedes descargar la versión Word:")
         with open(docx_salida, "rb") as f:
             st.sidebar.download_button(
                 "⬇️ Descargar reporte (DOCX)",
