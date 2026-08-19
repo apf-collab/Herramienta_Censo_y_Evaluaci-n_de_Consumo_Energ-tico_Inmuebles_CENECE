@@ -7,19 +7,73 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from io import BytesIO
 import time
-from docx import Document
 from datetime import date
+from docx import Document
+from docx.shared import Inches
+from io import BytesIO
 
-def generar_reporte_word(datos, plantilla_path, salida_path):
+def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, plantilla_path, salida_path):
     doc = Document(plantilla_path)
 
+    # 1. Reemplazo de texto en párrafos
     for paragraph in doc.paragraphs:
         for key, value in datos.items():
             marcador = f"{{{{{key}}}}}"
             if marcador in paragraph.text:
                 paragraph.text = paragraph.text.replace(marcador, str(value))
+
+    # 2. Insertar Tabla Resumen
+    for p in doc.paragraphs:
+        if "{{TABLA_RESUMEN}}" in p.text:
+            p.text = p.text.replace("{{TABLA_RESUMEN}}", "")
+            if df_resumen is not None and not df_resumen.empty:
+                tabla = doc.add_table(rows=1, cols=len(df_resumen.columns))
+                tabla.style = 'Table Grid'
+                
+                # Encabezados
+                hdr_cells = tabla.rows[0].cells
+                for i, col in enumerate(df_resumen.columns):
+                    hdr_cells[i].text = str(col)
+                
+                # Filas
+                for _, row in df_resumen.iterrows():
+                    row_cells = tabla.add_row().cells
+                    for i, val in enumerate(row):
+                        row_cells[i].text = str(val)
+                
+                p._p.addnext(tabla._element)
+            break
+
+    # 3. Insertar Imagen del Diagrama Sankey
+    if fig_sankey is not None:
+        try:
+            sankey_bytes = fig_sankey.to_image(format="png", width=900, height=500)
+            for p in doc.paragraphs:
+                if "{{DIAGRAMA_SANKEY_IMAGEN}}" in p.text:
+                    p.text = p.text.replace("{{DIAGRAMA_SANKEY_IMAGEN}}", "")
+                    run = p.add_run()
+                    run.add_picture(BytesIO(sankey_bytes), width=Inches(6.0))
+                    break
+        except Exception:
+            for p in doc.paragraphs:
+                if "{{DIAGRAMA_SANKEY_IMAGEN}}" in p.text:
+                    p.text = p.text.replace("{{DIAGRAMA_SANKEY_IMAGEN}}", "(Diagrama Sankey disponible en la plataforma)")
+
+    # 4. Insertar Imagen del Gráfico de Pareto
+    if fig_pareto is not None:
+        try:
+            pareto_bytes = fig_pareto.to_image(format="png", width=900, height=500)
+            for p in doc.paragraphs:
+                if "{{DIAGRAMA_PARETO_IMAGEN}}" in p.text:
+                    p.text = p.text.replace("{{DIAGRAMA_PARETO_IMAGEN}}", "")
+                    run = p.add_run()
+                    run.add_picture(BytesIO(pareto_bytes), width=Inches(6.0))
+                    break
+        except Exception:
+            for p in doc.paragraphs:
+                if "{{DIAGRAMA_PARETO_IMAGEN}}" in p.text:
+                    p.text = p.text.replace("{{DIAGRAMA_PARETO_IMAGEN}}", "(Gráfico de Pareto disponible en la plataforma)")
 
     doc.save(salida_path)
 
