@@ -1320,7 +1320,7 @@ if "res_tab_msg_shown" not in st.session_state:
 with tab_residencial:
 
     if not st.session_state.res_tab_msg_shown:
-        st.toast("Para Inmuebles de uso residencial selecciona 7 días de operación.", icon="📌")
+        st.toast("Si no conoces la potencia electrica de algun equipo, revisa su etiqueta o placa de datos.", icon="🔎")
         st.session_state.res_tab_msg_shown = True
 
     limites_tarifa = {
