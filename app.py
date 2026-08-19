@@ -1696,11 +1696,11 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
 
     # Selección automática de plantilla corregida
     if tiene_pisos:
-        plantilla = "templates/Plantilla_Informe_Por_piso_2.docx"
-        nombre_reporte = "Reporte_Diagnostico_Energetico_Por_Piso.docx"
+        plantilla = "templates/Plantilla_Informe_Por_piso.docx"
+        nombre_reporte = "Reporte_Energetico_Por_Piso.docx"
     else:
-        plantilla = "templates/Plantilla_Informe_Global_2.docx"
-        nombre_reporte = "Reporte_Diagnostico_Energetico_Global.docx"
+        plantilla = "templates/Plantilla_Informe_Global.docx"
+        nombre_reporte = "Reporte_Energetico_Global.docx"
 
     # --- CÁLCULOS GLOBALES Y DE SEGUNDO LUGAR ---
     usos_ordenados = df.groupby("uso")["valor"].sum().sort_values(ascending=False)
