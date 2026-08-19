@@ -1689,9 +1689,49 @@ if st.sidebar.button("📊 Mostrar / Ocultar Pareto"):
 
 st.sidebar.divider()
 
-if st.sidebar.button("📄 Generar reporte de resultados"):
-    sankey_data = st.session_state.get("sankey_data", [])
+# --- CAMPOS PARA CAPTURAR DATOS DEL INMUEBLE ---
+st.sidebar.subheader("📝 Datos para el Reporte")
 
+nombre_inm_input = st.sidebar.text_input(
+    "Nombre del inmueble:", 
+    placeholder="Ej. Edificio Sede CENECE", 
+    key="nombre_inm_input"
+)
+
+# Detección automática del tipo de inmueble según los datos capturados
+sankey_data = st.session_state.get("sankey_data", [])
+usos_cargados = [d.get("uso") for d in sankey_data]
+
+default_idx = 0  # Oficina por defecto
+if any(u in ["Equipos médicos", "Equipos de laboratorio", "Servicios auxiliares (esterilización, calentadores eléctricos etc)"] for u in usos_cargados):
+    default_idx = 1  # Servicio de salud
+elif any(u in ["Sistemas audiovisuales", "Equipos de ejercicio y recreativos"] for u in usos_cargados):
+    default_idx = 2  # Otros usos
+elif any(u in ["Acondicionamiento de aire residencial", "Electrodomésticos residenciales", "Entretenimiento", "Equipos sanitarios"] for u in usos_cargados):
+    default_idx = 3  # Residencial
+
+tipo_inm_opcion = st.sidebar.selectbox(
+    "Tipo de inmueble:",
+    ["Oficina", "Servicio de salud", "Otros usos (especificar)", "Residencial"],
+    index=default_idx,
+    key="tipo_inm_opcion"
+)
+
+# Entrada de texto para "Otros usos"
+if tipo_inm_opcion == "Otros usos (especificar)":
+    tipo_inm_custom = st.sidebar.text_input(
+        "Especifica el tipo de inmueble:",
+        placeholder="Ej. Banco, Escuela, Comercio, Gimnasio",
+        key="tipo_inm_custom"
+    )
+    tipo_inm_final = tipo_inm_custom.strip() if tipo_inm_custom.strip() else "Otros usos"
+else:
+    tipo_inm_final = tipo_inm_opcion
+
+if st.sidebar.button("📄 Generar reporte de resultados"):
+    if not nombre_inm_input.strip():
+        st.sidebar.warning("⚠️ Por favor ingresa el nombre del inmueble antes de generar el reporte.")
+        st.stop()
     if not sankey_data:
         st.sidebar.warning("⚠️ No hay datos suficientes para generar el reporte.")
         st.stop()
