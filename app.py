@@ -1805,10 +1805,10 @@ if st.sidebar.button("📄 Generar reporte de resultados"):
 
     if tiene_pisos:
         nombre_plantilla = "Plantilla_Informe_Por_piso.docx"
-        nombre_pdf = "Reporte_Diagnostico_Energetico_Por_Piso.pdf"
+        nombre_pdf = "Reporte_Energetico_Por_Piso.pdf"
     else:
         nombre_plantilla = "Plantilla_Informe_Global.docx"
-        nombre_pdf = "Reporte_Diagnostico_Energetico_Global.pdf"
+        nombre_pdf = "Reporte_Energetico_Global.pdf"
 
     plantilla = os.path.join(BASE_DIR, "templates", nombre_plantilla)
 
