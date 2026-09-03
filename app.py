@@ -1494,7 +1494,7 @@ with tab_residencial:
                             horas = st.number_input("Horas/día:", min_value=0.1, max_value=24.0, value=8.0, step=1.0, key=f"{key_base}_hr")
 
                             # Cálculo de la potencia eléctrica equivalente en Vatios (W)
-                            eficiencia = 0.75 if sub == "Hidroneumático" else 0.85
+                            eficiencia = 0.70 if sub == "Hidroneumático" else 0.85
                             potencia_w = (hp * 746) / eficiencia
 #                            st.caption(f"⚡ Potencia eléctrica calculada: **{round(potencia_w, 2)} W**")
 
