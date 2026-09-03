@@ -1,7 +1,4 @@
 # app_consumo.py
-# ===========================================
-# ⚡ APP STREAMLIT: Oficina / Salud / Otros usos + Residencial (integrado) + Consejos dinámicos
-# ===========================================
 
 import streamlit as st
 import pandas as pd
@@ -155,10 +152,7 @@ equipos_continuos = [
     "Bocina inteligente (Amazon Echo / Echo Dot, Google Nest Mini, Apple HomePod)"
 ]
 
-# ------------------------
 # BASES DE DATOS (potencias y COPs)
-# ------------------------
-
 # Potencias nominales por subuso (W)
 potencias_nominales = {
     "Tubo LED T8": 18, "Tubo LED T5": 16, "Foco LED": 10, "Panel LED 30x30": 18, "Panel LED 60x60": 48, "Panel LED 30x120": 50,
