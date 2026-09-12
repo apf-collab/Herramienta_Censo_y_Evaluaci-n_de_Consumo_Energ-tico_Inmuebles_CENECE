@@ -11,9 +11,6 @@ from datetime import date
 from docx import Document
 from docx.shared import Inches, Pt
 from io import BytesIO
-import plotly.io as pio
-# Desactiva MathJax para evitar que Kaleido se congele en Linux
-pio.kaleido.scope.mathjax = None
 
 def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, consejos_servicios, consejos_equipos, plantilla_path, salida_path):
     doc = Document(plantilla_path)
