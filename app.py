@@ -102,7 +102,7 @@ def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, consejos_ser
     # 5. Insertar Imagen del Diagrama Sankey
     if fig_sankey is not None:
         try:
-            sankey_bytes = fig_sankey.to_image(format="png", width=1100, height=650)
+            sankey_bytes = fig_sankey.to_image(format="png", width=1100, height=650, engine="kaleido")
             for p in doc.paragraphs:
                 if "{{DIAGRAMA_SANKEY_IMAGEN}}" in p.text:
                     p.text = p.text.replace("{{DIAGRAMA_SANKEY_IMAGEN}}", "")
@@ -117,7 +117,7 @@ def generar_reporte_word(datos, df_resumen, fig_sankey, fig_pareto, consejos_ser
     # 6. Insertar Imagen del Gráfico de Pareto
     if fig_pareto is not None:
         try:
-            pareto_bytes = fig_pareto.to_image(format="png", width=1100, height=600)
+            pareto_bytes = fig_pareto.to_image(format="png", width=1100, height=600, engine="kaleido")
             for p in doc.paragraphs:
                 if "{{DIAGRAMA_PARETO_IMAGEN}}" in p.text:
                     p.text = p.text.replace("{{DIAGRAMA_PARETO_IMAGEN}}", "")
